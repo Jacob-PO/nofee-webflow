@@ -6,6 +6,9 @@ window.NofeeChat = window.NofeeChat || {};
 (function() {
   const NC = window.NofeeChat;
 
+  // GitHub Pages 기본 URL (커스텀 도메인 사용 시에도 동일)
+  const BASE_URL = 'https://jacob-po.github.io/nofee-webflow';
+
   // 상태 변수들
   NC.chatContainer = null;
   NC.states = ['askPrice', 'askBrand', 'askProduct', 'askName', 'askPhone', 'askRegion', 'askCity', 'complete', 'askConsent'];
@@ -462,8 +465,8 @@ window.NofeeChat = window.NofeeChat || {};
     NC.showGreeting();
 
     Promise.all([
-      fetch('/data/products.json').then(res => res.json()),
-      fetch('/data/regions.json').then(res => res.json())
+      fetch(`${BASE_URL}/data/products.json`).then(res => res.json()),
+      fetch(`${BASE_URL}/data/regions.json`).then(res => res.json())
     ]).then(async ([productData, regionData]) => {
       NC.products = productData;
       NC.regionToCity = regionData;
