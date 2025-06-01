@@ -1,0 +1,443 @@
+/* 🤖 노피 AI 상담 페이지 스타일시트 */
+
+/* 기본 스타일 */
+.chat-wrapper {
+    max-width: 540px;
+    margin: 0 auto;
+    padding: 16px 16px 100px;
+    box-sizing: border-box;
+    font-family: 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0a0a0f;
+    min-height: 100vh;
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* AI 그라데이션 배경 애니메이션 */
+.chat-wrapper::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(from 180deg at 50% 50%, #5c27fe 0deg, #e91e63 90deg, #00bcd4 180deg, #5c27fe 360deg);
+    animation: aiRotate 20s linear infinite;
+    opacity: 0.03;
+    pointer-events: none;
+}
+
+@keyframes aiRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 채팅 헤더 */
+.chat-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    position: relative;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 16px 20px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* AI 아바타 */
+.ai-avatar {
+    position: relative;
+}
+
+.ai-avatar img {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    box-shadow: 0 0 0 2px rgba(92, 39, 254, 0.2), 0 4px 20px rgba(92, 39, 254, 0.3);
+}
+
+/* AI 온라인 상태 표시 */
+.ai-status {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 14px;
+    height: 14px;
+    background: #00ff88;
+    border-radius: 50%;
+    border: 2px solid #0a0a0f;
+    animation: aiStatusPulse 2s ease-in-out infinite;
+}
+
+@keyframes aiStatusPulse {
+    0%, 100% { 
+        transform: scale(1); 
+        opacity: 1; 
+    }
+    50% { 
+        transform: scale(1.2); 
+        opacity: 0.8; 
+    }
+}
+
+/* 헤더 텍스트 */
+.header-text h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+.ai-subtitle {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
+}
+
+/* 채팅 컨테이너 */
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    z-index: 2;
+}
+
+/* 채팅 버블 */
+.chat-bubble {
+    max-width: 85%;
+    padding: 16px 20px;
+    border-radius: 20px;
+    font-size: 15px;
+    line-height: 1.6;
+    word-break: keep-all;
+    animation: aiFadeSlide 0.3s ease-out;
+    position: relative;
+}
+
+@keyframes aiFadeSlide {
+    from { 
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 봇 메시지 */
+.chat-bubble.bot {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: white;
+    padding-left: 60px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.chat-bubble.bot::before {
+    content: '';
+    background: url('https://cdn.prod.website-files.com/6821372c9d4a7fab5de1da56/682c02c94e124b9c3ec74ab0_%E1%84%82%E1%85%A9%E1%84%91%E1%85%B5%20%E1%84%8F%E1%85%B3%E1%86%AF%E1%84%85%E1%85%B5%E1%86%B8.png') no-repeat center/cover;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    position: absolute;
+    top: 14px;
+    left: 16px;
+    box-shadow: 0 0 0 2px rgba(92, 39, 254, 0.2);
+}
+
+/* 사용자 메시지 */
+.chat-bubble.user {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #5c27fe 0%, #7c3aed 100%);
+    color: white;
+    box-shadow: 0 4px 16px rgba(92, 39, 254, 0.3);
+}
+
+/* 입력 영역 */
+.chat-input {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+    animation: aiFadeSlide 0.3s ease-out;
+}
+
+/* 입력 필드 공통 스타일 */
+.chat-input input,
+.chat-input select {
+    appearance: none;
+    -webkit-appearance: none;
+    padding: 16px 20px;
+    font-size: 15px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: white;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.chat-input input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.chat-input input:focus,
+.chat-input select:focus {
+    outline: none;
+    border-color: #5c27fe;
+    background: rgba(92, 39, 254, 0.1);
+    box-shadow: 0 0 0 3px rgba(92, 39, 254, 0.2);
+}
+
+/* 버튼 스타일 */
+.chat-input button {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 18px 20px;
+    font-size: 16px;
+    border-radius: 16px;
+    text-align: left;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    color: white;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    font-family: inherit;
+}
+
+/* 버튼 호버 이펙트 */
+.chat-input button::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(92, 39, 254, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+.chat-input button:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+.chat-input button:hover {
+    border-color: rgba(92, 39, 254, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(92, 39, 254, 0.2);
+}
+
+.chat-input button:active {
+    transform: translateY(0);
+}
+
+/* AI 생각중 애니메이션 */
+.ai-thinking {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: rgba(92, 39, 254, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 20px;
+    margin: 12px 0;
+    border: 1px solid rgba(92, 39, 254, 0.2);
+    animation: aiFadeSlide 0.3s ease-out;
+}
+
+.ai-dots {
+    display: flex;
+    gap: 6px;
+}
+
+.ai-dot {
+    width: 8px;
+    height: 8px;
+    background: #5c27fe;
+    border-radius: 50%;
+    animation: aiDotBounce 1.4s ease-in-out infinite;
+}
+
+.ai-dot:nth-child(2) { animation-delay: 0.2s; }
+.ai-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes aiDotBounce {
+    0%, 80%, 100% { 
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    40% { 
+        transform: translateY(-10px) scale(1.2);
+        opacity: 0.8;
+    }
+}
+
+.ai-thinking-text {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+}
+
+/* 뒤로가기 버튼 */
+.chat-back {
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    text-align: center;
+    cursor: pointer;
+    margin-top: 8px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.chat-back:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* 스크롤바 스타일 */
+.chat-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+.chat-container::-webkit-scrollbar-thumb {
+    background: rgba(92, 39, 254, 0.5);
+    border-radius: 3px;
+}
+
+.chat-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(92, 39, 254, 0.7);
+}
+
+/* 포커스 스타일 */
+.focus-visible {
+    outline: 2px solid #5c27fe !important;
+    outline-offset: 2px;
+}
+
+/* 로딩 상태 */
+.chat-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+}
+
+.chat-loading::after {
+    content: '';
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(92, 39, 254, 0.2);
+    border-top-color: #5c27fe;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 에러 메시지 */
+.chat-error {
+    background: rgba(255, 68, 68, 0.1);
+    border: 1px solid rgba(255, 68, 68, 0.3);
+    color: #ff4444;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    margin: 8px 0;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 600px) {
+    .chat-wrapper {
+        padding: 12px 12px 80px;
+        border-radius: 0;
+        max-width: 100%;
+    }
+    
+    .chat-bubble { 
+        font-size: 14px; 
+        padding: 14px 18px;
+    }
+    
+    .chat-bubble.bot {
+        padding-left: 52px;
+    }
+    
+    .chat-bubble.bot::before {
+        width: 28px;
+        height: 28px;
+        top: 12px;
+        left: 14px;
+    }
+    
+    .chat-input button,
+    .chat-input input,
+    .chat-input select { 
+        font-size: 15px; 
+        padding: 14px 18px;
+    }
+    
+    .chat-header {
+        padding: 12px 16px;
+        margin-bottom: 16px;
+    }
+    
+    .ai-avatar img {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .header-text h1 {
+        font-size: 18px;
+    }
+    
+    .ai-subtitle {
+        font-size: 12px;
+    }
+}
+
+/* 다크모드 지원 */
+@media (prefers-color-scheme: dark) {
+    .chat-wrapper {
+        background: #0a0a0f;
+    }
+}
+
+/* 접근성 향상 */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation: none !important;
+        transition: none !important;
+    }
+}
