@@ -663,12 +663,21 @@
                     return res.json();
                 })
             ]);
-            
+
             state.products = productData;
-            state.regionToCity = regionData;
-            
+            // 지역 데이터는 배열로 제공되므로 {"서울": [..]} 형태의 맵으로 변환
+            const regionMap = {};
+            if (Array.isArray(regionData)) {
+                regionData.forEach(r => {
+                    if (r && r.name && Array.isArray(r.districts)) {
+                        regionMap[r.name] = r.districts;
+                    }
+                });
+            }
+            state.regionToCity = regionMap;
+
             console.log(`상품 데이터 로드 완료: ${productData.length}개`);
-            console.log(`지역 데이터 로드 완료: ${Object.keys(regionData).length}개 시도`);
+            console.log(`지역 데이터 로드 완료: ${Object.keys(regionMap).length}개 시도`);
             
             await animations.showAIThinking("AI가 맞춤 상품을 분석 중입니다");
             
