@@ -6,11 +6,18 @@
     let allProducts = [];
     let currentBannerIndex = 0;
     let bannerInterval;
+    let configData = {};
+    let modelsData = {};
+    let brandsData = {};
 
     // GitHub 저장소 설정
     const GITHUB_BASE_URL = 'https://jacob-po.github.io/nofee-webflow';
     const PRODUCTS_DATA_URL = 'https://raw.githubusercontent.com/jacob-po/products-data/refs/heads/main/products.json';
     const REVIEWS_DATA_URL = `${GITHUB_BASE_URL}/data/review.json`;
+    const BANNERS_DATA_URL = `${GITHUB_BASE_URL}/data/banners.json`;
+    const BRANDS_DATA_URL = `${GITHUB_BASE_URL}/data/brands.json`;
+    const MODELS_DATA_URL = `${GITHUB_BASE_URL}/data/models.json`;
+    const CONFIG_DATA_URL = `${GITHUB_BASE_URL}/data/config.json`;
 
     // 🎨 유틸리티 함수들
     const formatKRW = (value) => {
@@ -27,6 +34,18 @@
 
     const getBrandInfo = (brand) => {
         const mappedBrand = brandNameMap[brand] || brand;
+        const brandData = brandsData[mappedBrand];
+        
+        if (brandData) {
+            return {
+                icon: brandData.icon,
+                class: brandData.class,
+                displayName: mappedBrand,
+                ...brandData
+            };
+        }
+        
+        // 기본값
         switch(mappedBrand) {
             case '삼성': return { icon: 'S', class: 'samsung', displayName: '삼성' };
             case '애플': return { icon: 'A', class: 'apple', displayName: '애플' };
@@ -34,115 +53,188 @@
         }
     };
 
-    // 출고가 추정 함수 (principal이 할인액이므로 모델별 기본 가격 설정)
-    const getEstimatedOriginPrice = (model) => {
-        // 모델명에 따른 출고가 추정
-        if (model.includes('S25 Ultra')) return 1700000;
-        if (model.includes('S25+')) return 1400000;
-        if (model.includes('S25')) return 1200000;
-        if (model.includes('S24 Ultra')) return 1600000;
-        if (model.includes('S24+')) return 1300000;
-        if (model.includes('S24')) return 1100000;
-        if (model.includes('S24 FE')) return 900000;
-        if (model.includes('Z 폴드6') || model.includes('Z Fold6')) return 2200000;
-        if (model.includes('Z 플립6') || model.includes('Z Flip6')) return 1400000;
-        if (model.includes('아이폰 16 Pro Max') || model.includes('iPhone 16 Pro Max')) return 1900000;
-        if (model.includes('아이폰 16 Pro') || model.includes('iPhone 16 Pro')) return 1550000;
-        if (model.includes('아이폰 16 Plus') || model.includes('iPhone 16 Plus')) return 1350000;
-        if (model.includes('아이폰 16') || model.includes('iPhone 16')) return 1250000;
-        
+    // 출고가 가져오기
+    const getOriginPrice = (model) => {
+        // modelsData에서 모델명으로 출고가 검색
+        const modelInfo = modelsData[model];
+        if (modelInfo && modelInfo.originPrice) {
+            return modelInfo.originPrice;
+        }
+
+        // 부분 매칭으로 검색
+        for (const [key, value] of Object.entries(modelsData)) {
+            if (model.includes(key) || key.includes(model)) {
+                return value.originPrice;
+            }
+        }
+
         // 기본값
         return 1000000;
     };
 
     const calculateDiscount = (model, principal) => {
-        const originPrice = getEstimatedOriginPrice(model);
+        const originPrice = getOriginPrice(model);
         const discount = Math.abs(principal);
         const discountRate = Math.round((discount / originPrice) * 100);
         return { discount, discountRate, originPrice };
     };
 
-    // 🚀 배너 슬라이더
-    function initBanner() {
-        const track = document.getElementById('bannerTrack');
-        const indicators = document.querySelectorAll('.indicator');
-        const slideCount = 3;
+    // 🚀 초기 데이터 로드
+    async function loadInitialData() {
+        try {
+            // 모든 설정 데이터를 병렬로 로드
+            const [configRes, modelsRes, brandsRes] = await Promise.all([
+                fetch(CONFIG_DATA_URL).catch(() => null),
+                fetch(MODELS_DATA_URL).catch(() => null),
+                fetch(BRANDS_DATA_URL).catch(() => null)
+            ]);
 
-        if (!track || !indicators.length) return;
-
-        function goToSlide(index) {
-            currentBannerIndex = index;
-            track.style.transform = `translateX(-${currentBannerIndex * 100}%)`;
-            
-            indicators.forEach((indicator, i) => {
-                indicator.classList.toggle('active', i === currentBannerIndex);
-            });
-        }
-
-        function nextSlide() {
-            const nextIndex = (currentBannerIndex + 1) % slideCount;
-            goToSlide(nextIndex);
-        }
-
-        function startAutoSlide() {
-            bannerInterval = setInterval(nextSlide, 4000);
-        }
-
-        function stopAutoSlide() {
-            if (bannerInterval) {
-                clearInterval(bannerInterval);
-                bannerInterval = null;
+            if (configRes && configRes.ok) {
+                configData = await configRes.json();
             }
+            if (modelsRes && modelsRes.ok) {
+                modelsData = await modelsRes.json();
+            }
+            if (brandsRes && brandsRes.ok) {
+                brandsData = await brandsRes.json();
+            }
+        } catch (error) {
+            console.error('초기 데이터 로드 실패:', error);
         }
+    }
 
-        // 인디케이터 클릭 이벤트
-        indicators.forEach((indicator, index) => {
-            indicator.addEventListener('click', () => {
-                goToSlide(index);
-                stopAutoSlide();
-                setTimeout(startAutoSlide, 2000);
-            });
-        });
+    // 🚀 배너 슬라이더
+    async function initBanner() {
+        const track = document.getElementById('bannerTrack');
+        const indicators = document.querySelector('.banner-indicators');
+        
+        if (!track || !indicators) return;
 
-        // 터치 스와이프 지원
-        let startX = 0;
-        let endX = 0;
-
-        track.addEventListener('touchstart', (e) => {
-            startX = e.touches[0].clientX;
-            stopAutoSlide();
-        }, { passive: true });
-
-        track.addEventListener('touchend', (e) => {
-            endX = e.changedTouches[0].clientX;
-            const diff = startX - endX;
+        try {
+            // GitHub에서 배너 데이터 로드
+            const response = await fetch(BANNERS_DATA_URL);
+            if (!response.ok) throw new Error('배너 데이터 로드 실패');
             
-            if (Math.abs(diff) > 50) {
-                if (diff > 0) {
-                    nextSlide();
-                } else {
-                    const prevIndex = currentBannerIndex === 0 ? slideCount - 1 : currentBannerIndex - 1;
-                    goToSlide(prevIndex);
+            const banners = await response.json();
+            
+            // 배너 슬라이드 생성
+            track.innerHTML = '';
+            indicators.innerHTML = '';
+            
+            banners.forEach((banner, index) => {
+                // 슬라이드 생성
+                const slide = document.createElement('div');
+                slide.className = 'banner-slide';
+                slide.innerHTML = `
+                    <div class="slide-content">
+                        <div class="slide-text">
+                            <h3>${banner.title}</h3>
+                            <p>${banner.subtitle}</p>
+                        </div>
+                        <div class="slide-visual">${banner.emoji}</div>
+                    </div>
+                `;
+                track.appendChild(slide);
+                
+                // 인디케이터 생성
+                const indicator = document.createElement('div');
+                indicator.className = index === 0 ? 'indicator active' : 'indicator';
+                indicators.appendChild(indicator);
+            });
+
+            const slideCount = banners.length;
+
+            function goToSlide(index) {
+                currentBannerIndex = index;
+                track.style.transform = `translateX(-${currentBannerIndex * 100}%)`;
+                
+                const allIndicators = indicators.querySelectorAll('.indicator');
+                allIndicators.forEach((indicator, i) => {
+                    indicator.classList.toggle('active', i === currentBannerIndex);
+                });
+            }
+
+            function nextSlide() {
+                const nextIndex = (currentBannerIndex + 1) % slideCount;
+                goToSlide(nextIndex);
+            }
+
+            function startAutoSlide() {
+                bannerInterval = setInterval(nextSlide, 4000);
+            }
+
+            function stopAutoSlide() {
+                if (bannerInterval) {
+                    clearInterval(bannerInterval);
+                    bannerInterval = null;
                 }
             }
-            
-            setTimeout(startAutoSlide, 2000);
-        }, { passive: true });
 
-        // 마우스 호버 시 자동 슬라이드 중지
-        track.addEventListener('mouseenter', stopAutoSlide);
-        track.addEventListener('mouseleave', startAutoSlide);
+            // 인디케이터 클릭 이벤트
+            const allIndicators = indicators.querySelectorAll('.indicator');
+            allIndicators.forEach((indicator, index) => {
+                indicator.addEventListener('click', () => {
+                    goToSlide(index);
+                    stopAutoSlide();
+                    setTimeout(startAutoSlide, 2000);
+                });
+            });
 
-        startAutoSlide();
+            // 터치 스와이프 지원
+            let startX = 0;
+            let endX = 0;
 
-        // 페이지 가시성 변경 시 처리
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
+            track.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
                 stopAutoSlide();
-            } else {
-                startAutoSlide();
-            }
-        });
+            }, { passive: true });
+
+            track.addEventListener('touchend', (e) => {
+                endX = e.changedTouches[0].clientX;
+                const diff = startX - endX;
+                
+                if (Math.abs(diff) > 50) {
+                    if (diff > 0) {
+                        nextSlide();
+                    } else {
+                        const prevIndex = currentBannerIndex === 0 ? slideCount - 1 : currentBannerIndex - 1;
+                        goToSlide(prevIndex);
+                    }
+                }
+                
+                setTimeout(startAutoSlide, 2000);
+            }, { passive: true });
+
+            // 마우스 호버 시 자동 슬라이드 중지
+            track.addEventListener('mouseenter', stopAutoSlide);
+            track.addEventListener('mouseleave', startAutoSlide);
+
+            startAutoSlide();
+
+            // 페이지 가시성 변경 시 처리
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    stopAutoSlide();
+                } else {
+                    startAutoSlide();
+                }
+            });
+
+        } catch (error) {
+            console.error('배너 로드 실패:', error);
+            // 에러 시 기본 배너 표시
+            track.innerHTML = `
+                <div class="banner-slide">
+                    <div class="slide-content">
+                        <div class="slide-text">
+                            <h3>전국 어디서나<br><strong>성지 가격</strong>으로 드립니다</h3>
+                            <p>오직 노피 입점 대리점에서만</p>
+                        </div>
+                        <div class="slide-visual">🚀</div>
+                    </div>
+                </div>
+            `;
+        }
     }
 
     // 🏆 상품 카드 생성
@@ -389,43 +481,8 @@
             
         } catch (error) {
             console.error('리뷰 로딩 실패:', error);
-            // 오류 시 기본 리뷰 표시
-            const fallbackReviews = [
-                {
-                    name: "김민수", initial: "김", product: "갤럭시 S25 Ultra 256GB",
-                    comment: "기기변경으로 샀는데 월 8만원대면 진짜 혜자예요. 개통도 빠르고 설명도 잘 해주셔서 좋았어요.",
-                    rating: 5.0, highlight: "월 8만원대"
-                },
-                {
-                    name: "이지영", initial: "이", product: "아이폰 16 Pro 128GB",
-                    comment: "원래 비쌀 줄 알았는데 월 9만원도 안 돼서 바로 구매했습니다. 상담도 친절했어요!",
-                    rating: 4.9, highlight: "월 9만원도 안 돼서"
-                }
-            ];
-            
-            // 폴백 리뷰 렌더링
-            reviewsScroll.innerHTML = '';
-            fallbackReviews.forEach(review => {
-                const stars = '⭐'.repeat(Math.floor(review.rating));
-                const comment = review.comment.replace(review.highlight, `<span class='review-highlight'>${review.highlight}</span>`);
-                
-                const reviewCard = document.createElement('div');
-                reviewCard.className = 'review-card';
-                
-                reviewCard.innerHTML = `
-                    <div class="review-header">
-                        <div class="reviewer-avatar">${review.initial}</div>
-                        <div class="reviewer-info">
-                            <h5>${review.name}</h5>
-                            <div class="review-rating">${stars} ${review.rating}</div>
-                        </div>
-                    </div>
-                    <div class="review-product">${review.product}</div>
-                    <div class="review-text">${comment}</div>
-                `;
-                
-                reviewsScroll.appendChild(reviewCard);
-            });
+            // 에러 시 빈 상태 표시
+            reviewsScroll.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--gray-500);">리뷰를 불러올 수 없습니다.</div>';
         }
     }
 
@@ -454,49 +511,58 @@
             }
         });
 
-        // 기본값 설정
-        if (brandStats['삼성'].popularModel === '') {
-            brandStats['삼성'].popularModel = 'S25 Ultra';
-            brandStats['삼성'].maxDiscount = 40;
-        }
-        if (brandStats['애플'].popularModel === '') {
-            brandStats['애플'].popularModel = '아이폰 16 Pro';
-            brandStats['애플'].maxDiscount = 35;
-        }
-
         return brandStats;
     }
 
     // 🏢 브랜드 섹션 업데이트
-    function updateBrandSection() {
+    async function updateBrandSection() {
         const brandStats = calculateBrandStats();
         
-        // 삼성 카드 업데이트
-        const samsungCard = document.querySelector('.brand-card[onclick*="삼성"]');
-        if (samsungCard) {
-            const modelElement = samsungCard.querySelector('.stat-value:not(.highlight)');
-            const discountElement = samsungCard.querySelector('.stat-value.highlight');
-            
-            if (modelElement) {
-                modelElement.textContent = brandStats['삼성'].popularModel.replace('갤럭시 ', '');
+        // 브랜드 카드를 GitHub 데이터로 업데이트
+        const brandGrid = document.querySelector('.brand-grid');
+        if (!brandGrid) return;
+
+        try {
+            // brandsData가 이미 로드되어 있으면 사용
+            if (Object.keys(brandsData).length > 0) {
+                brandGrid.innerHTML = '';
+                
+                ['삼성', '애플'].forEach(brandName => {
+                    const brand = brandsData[brandName];
+                    if (!brand) return;
+                    
+                    const stats = brandStats[brandName];
+                    const popularModel = stats.popularModel || brand.defaultModel || '';
+                    const maxDiscount = stats.maxDiscount || brand.defaultDiscount || 0;
+                    
+                    const brandCard = document.createElement('div');
+                    brandCard.className = 'brand-card';
+                    brandCard.onclick = () => selectBrand(brandName);
+                    
+                    brandCard.innerHTML = `
+                        <div class="brand-logo">
+                            <img src="${brand.logo}" alt="${brandName}" loading="lazy">
+                        </div>
+                        <h4>${brandName}</h4>
+                        <p>${brand.description}</p>
+                        <div class="brand-stats">
+                            <div class="stat-row">
+                                <span class="stat-label">인기 모델</span>
+                                <span class="stat-value">${popularModel.replace('갤럭시 ', '')}</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">최대 할인</span>
+                                <span class="stat-value highlight">${maxDiscount}%</span>
+                            </div>
+                        </div>
+                        <div class="brand-arrow">›</div>
+                    `;
+                    
+                    brandGrid.appendChild(brandCard);
+                });
             }
-            if (discountElement) {
-                discountElement.textContent = `${brandStats['삼성'].maxDiscount}%`;
-            }
-        }
-        
-        // 애플 카드 업데이트
-        const appleCard = document.querySelector('.brand-card[onclick*="애플"]');
-        if (appleCard) {
-            const modelElement = appleCard.querySelector('.stat-value:not(.highlight)');
-            const discountElement = appleCard.querySelector('.stat-value.highlight');
-            
-            if (modelElement) {
-                modelElement.textContent = brandStats['애플'].popularModel;
-            }
-            if (discountElement) {
-                discountElement.textContent = `${brandStats['애플'].maxDiscount}%`;
-            }
+        } catch (error) {
+            console.error('브랜드 섹션 업데이트 실패:', error);
         }
     }
 
@@ -632,8 +698,11 @@
     // 🚀 메인 초기화 함수
     async function initNofeeMain() {
         try {
+            // 초기 데이터 로드
+            await loadInitialData();
+            
             // 배너 초기화
-            initBanner();
+            await initBanner();
             
             // 비동기 데이터 로드
             await Promise.all([
