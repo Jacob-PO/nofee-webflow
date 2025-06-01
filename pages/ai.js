@@ -26,7 +26,8 @@
         selectedPriceRange: {},
         selectedBrand: '',
         products: [],
-        regionToCity: {}
+        regionToCity: {},
+        regions: []
     };
     
     // GitHub 저장소 설정
@@ -346,13 +347,20 @@
         askRegion: async () => {
             await animations.showAIThinking("지역 정보 확인");
             chatUI.addBotMessage("거주 중이신 시(도)를 선택해주세요.");
-            chatUI.showInput('select', Object.keys(state.regionToCity));
+            chatUI.showInput('select', state.regions);
         },
         
         askCity: async () => {
             await animations.showAIThinking("세부 지역 확인");
+            const districts = state.regionToCity[state.userData.region] || [];
+            if (districts.length === 0) {
+                state.userData.city = state.userData.region;
+                dataManager.updateUrlParams();
+                state.stateIndex++;
+                return chatFlow.nextStep();
+            }
             chatUI.addBotMessage("군/구를 선택해주세요.");
-            chatUI.showInput('select', state.regionToCity[state.userData.region] || []);
+            chatUI.showInput('select', districts);
         },
         
         complete: async () => {
@@ -675,6 +683,7 @@
                 });
             }
             state.regionToCity = regionMap;
+            state.regions = Object.keys(regionMap);
 
             console.log(`상품 데이터 로드 완료: ${productData.length}개`);
             console.log(`지역 데이터 로드 완료: ${Object.keys(regionMap).length}개 시도`);
