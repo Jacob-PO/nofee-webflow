@@ -24,29 +24,19 @@
         return Math.abs(Number(value)).toLocaleString("ko-KR") + "원";
     };
 
-    // 브랜드명 매핑
-    const brandNameMap = {
-        'Samsung': '삼성',
-        'Apple': '애플',
-        'SAMSUNG': '삼성',
-        'APPLE': '애플'
-    };
-
     const getBrandInfo = (brand) => {
-        const mappedBrand = brandNameMap[brand] || brand;
-        const brandData = brandsData[mappedBrand];
-        
-        if (brandData) {
+        // 브랜드 데이터가 로드되어 있으면 사용
+        if (brandsData && brandsData[brand]) {
             return {
-                icon: brandData.icon,
-                class: brandData.class,
-                displayName: mappedBrand,
-                ...brandData
+                icon: brandsData[brand].icon,
+                class: brandsData[brand].class,
+                displayName: brand,
+                ...brandsData[brand]
             };
         }
         
         // 기본값
-        switch(mappedBrand) {
+        switch(brand) {
             case '삼성': return { icon: 'S', class: 'samsung', displayName: '삼성' };
             case '애플': return { icon: 'A', class: 'apple', displayName: '애플' };
             default: return { icon: '📱', class: 'etc', displayName: brand };
@@ -56,24 +46,46 @@
     // 출고가 가져오기
     const getOriginPrice = (model) => {
         // modelsData에서 모델명으로 출고가 검색
-        const modelInfo = modelsData[model];
-        if (modelInfo && modelInfo.originPrice) {
-            return modelInfo.originPrice;
+        if (modelsData && modelsData[model]) {
+            return modelsData[model].originPrice;
         }
 
         // 부분 매칭으로 검색
-        for (const [key, value] of Object.entries(modelsData)) {
-            if (model.includes(key) || key.includes(model)) {
-                return value.originPrice;
+        if (modelsData) {
+            for (const [key, value] of Object.entries(modelsData)) {
+                if (model.includes(key) || key.includes(model)) {
+                    return value.originPrice;
+                }
             }
         }
 
+        // 모델명에 따른 기본 출고가 추정
+        if (model.includes('S25 울트라') || model.includes('S25 Ultra')) return 1700000;
+        if (model.includes('S25 플러스') || model.includes('S25+')) return 1400000;
+        if (model.includes('S25')) return 1200000;
+        if (model.includes('S24 울트라') || model.includes('S24 Ultra')) return 1600000;
+        if (model.includes('S24 플러스') || model.includes('S24+')) return 1300000;
+        if (model.includes('S24')) return 1100000;
+        if (model.includes('S24 FE')) return 900000;
+        if (model.includes('Z 폴드6') || model.includes('Z Fold6')) return 2200000;
+        if (model.includes('Z 플립6') || model.includes('Z Flip6')) return 1400000;
+        if (model.includes('아이폰 16 프로 맥스') || model.includes('iPhone 16 Pro Max')) return 1900000;
+        if (model.includes('아이폰 16 프로') || model.includes('iPhone 16 Pro')) return 1550000;
+        if (model.includes('아이폰 16 플러스') || model.includes('iPhone 16 Plus')) return 1350000;
+        if (model.includes('아이폰 16')) return 1250000;
+        if (model.includes('아이폰 15')) return 1150000;
+        
         // 기본값
         return 1000000;
     };
 
     const calculateDiscount = (model, principal) => {
         const originPrice = getOriginPrice(model);
+        // principal이 음수면 할인, 양수면 추가 비용
+        if (principal >= 0) {
+            return { discount: 0, discountRate: 0, originPrice };
+        }
+        
         const discount = Math.abs(principal);
         const discountRate = Math.round((discount / originPrice) * 100);
         return { discount, discountRate, originPrice };
@@ -82,6 +94,8 @@
     // 🚀 초기 데이터 로드
     async function loadInitialData() {
         try {
+            console.log('초기 데이터 로드 시작...');
+            
             // 모든 설정 데이터를 병렬로 로드
             const [configRes, modelsRes, brandsRes] = await Promise.all([
                 fetch(CONFIG_DATA_URL).catch(() => null),
@@ -91,12 +105,15 @@
 
             if (configRes && configRes.ok) {
                 configData = await configRes.json();
+                console.log('Config 데이터 로드 완료');
             }
             if (modelsRes && modelsRes.ok) {
                 modelsData = await modelsRes.json();
+                console.log('Models 데이터 로드 완료');
             }
             if (brandsRes && brandsRes.ok) {
                 brandsData = await brandsRes.json();
+                console.log('Brands 데이터 로드 완료');
             }
         } catch (error) {
             console.error('초기 데이터 로드 실패:', error);
@@ -108,7 +125,10 @@
         const track = document.getElementById('bannerTrack');
         const indicators = document.querySelector('.banner-indicators');
         
-        if (!track || !indicators) return;
+        if (!track || !indicators) {
+            console.error('배너 요소를 찾을 수 없습니다');
+            return;
+        }
 
         try {
             // GitHub에서 배너 데이터 로드
@@ -116,6 +136,7 @@
             if (!response.ok) throw new Error('배너 데이터 로드 실패');
             
             const banners = await response.json();
+            console.log('배너 데이터 로드 완료:', banners.length, '개');
             
             // 배너 슬라이드 생성
             track.innerHTML = '';
@@ -245,6 +266,11 @@
         const card = document.createElement('div');
         card.className = 'product-card';
         
+        // support 필드 처리
+        const supportText = product.support === '공시지원' ? '공시지원' : 
+                          product.support === '선택약정' ? '선택약정' : 
+                          product.support;
+        
         card.innerHTML = `
             <div class="product-header">
                 <div class="brand-icon ${brandInfo.class}">${brandInfo.icon}</div>
@@ -253,7 +279,7 @@
                     <div class="product-meta">
                         <span class="meta-tag">${product.carrier}</span>
                         <span class="meta-tag">${product.type}</span>
-                        <span class="meta-tag">${product.support === 'O' ? '지원금O' : '지원금X'}</span>
+                        <span class="meta-tag">${supportText}</span>
                     </div>
                 </div>
             </div>
@@ -261,9 +287,9 @@
             <div class="price-section">
                 <div class="original-price">
                     <span class="price-original">${formatKRW(originPrice)}</span>
-                    <span class="discount-badge">${discountRate}% 할인</span>
+                    ${discountRate > 0 ? `<span class="discount-badge">${discountRate}% 할인</span>` : ''}
                 </div>
-                <div class="discount-amount">- ${formatKRW(discount)} 할인</div>
+                ${discount > 0 ? `<div class="discount-amount">- ${formatKRW(discount)} 할인</div>` : ''}
             </div>
             
             <div class="final-price">
@@ -278,7 +304,7 @@
                 carrier: product.carrier || "",
                 type: product.type || "",
                 support: product.support || "",
-                brand: brandInfo.displayName || "",
+                brand: product.brand || "",
                 principal: product.principal || 0,
                 plan_name: product.plan_name || "",
                 plan_period: product.plan_period || "",
@@ -297,30 +323,41 @@
         const loadingElement = document.getElementById('productsLoading');
         const gridElement = document.getElementById('productsGrid');
         
-        if (!loadingElement || !gridElement) return;
+        if (!loadingElement || !gridElement) {
+            console.error('상품 표시 요소를 찾을 수 없습니다');
+            return;
+        }
         
         try {
+            console.log('상품 데이터 로드 시작...');
             const response = await fetch(PRODUCTS_DATA_URL);
             
             if (!response.ok) {
-                throw new Error('데이터를 불러올 수 없습니다');
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
             
             const data = await response.json();
+            console.log('전체 상품 데이터 로드 완료:', data.length, '개');
+            
             allProducts = data;
             
             // 상품 필터링 및 정렬
             const filteredProducts = data
                 .filter(product => {
                     // 브랜드 필터링
-                    const brandInfo = getBrandInfo(product.brand);
-                    if (!['삼성', '애플'].includes(brandInfo.displayName)) return false;
+                    if (!['삼성', '애플'].includes(product.brand)) {
+                        return false;
+                    }
                     
                     // 총액이 너무 낮은 상품 제외
-                    if (product.total < 30000) return false;
+                    if (product.total < 30000) {
+                        return false;
+                    }
                     
-                    // principal이 양수인 경우 (할인이 없는 경우) 제외
-                    if (product.principal >= 0) return false;
+                    // principal이 음수인 경우만 (할인이 있는 경우)
+                    if (product.principal >= 0) {
+                        return false;
+                    }
                     
                     return true;
                 })
@@ -330,16 +367,19 @@
                 })
                 .sort((a, b) => b.discountRate - a.discountRate);
             
+            console.log('필터링된 상품:', filteredProducts.length, '개');
+            
             // 삼성과 애플 각각 할인율 높은 상품 2개씩
             const samsungProducts = filteredProducts
-                .filter(p => getBrandInfo(p.brand).displayName === '삼성')
+                .filter(p => p.brand === '삼성')
                 .slice(0, 2);
                 
             const appleProducts = filteredProducts
-                .filter(p => getBrandInfo(p.brand).displayName === '애플')
+                .filter(p => p.brand === '애플')
                 .slice(0, 2);
             
             const bestProducts = [...samsungProducts, ...appleProducts];
+            console.log('베스트 상품 선정:', bestProducts.length, '개');
             
             // 로딩 숨기고 그리드 표시
             loadingElement.style.display = 'none';
@@ -347,7 +387,8 @@
             
             // 상품 카드 생성
             gridElement.innerHTML = '';
-            bestProducts.forEach(product => {
+            bestProducts.forEach((product, index) => {
+                console.log(`상품 ${index + 1}:`, product.model, '할인율:', product.discountRate + '%');
                 const card = createProductCard(product);
                 gridElement.appendChild(card);
             });
@@ -360,7 +401,8 @@
             loadingElement.innerHTML = `
                 <div style="text-align: center; padding: 40px 20px; color: var(--gray-500);">
                     <p>⚠️ 상품을 불러올 수 없어요</p>
-                    <button onclick="loadBestProducts()" style="margin-top: 12px; padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">다시 시도</button>
+                    <p style="font-size: 14px; margin-top: 8px;">에러: ${error.message}</p>
+                    <button onclick="location.reload()" style="margin-top: 12px; padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">다시 시도</button>
                 </div>
             `;
         }
@@ -370,17 +412,21 @@
     async function loadReviews() {
         const reviewsScroll = document.getElementById('reviewsScroll');
         
-        if (!reviewsScroll) return;
+        if (!reviewsScroll) {
+            console.error('리뷰 스크롤 요소를 찾을 수 없습니다');
+            return;
+        }
         
         try {
-            // GitHub에서 리뷰 데이터 가져오기
+            console.log('리뷰 데이터 로드 시작...');
             const response = await fetch(REVIEWS_DATA_URL);
             
             if (!response.ok) {
-                throw new Error('리뷰 데이터를 불러올 수 없습니다');
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
             
             const reviews = await response.json();
+            console.log('리뷰 데이터 로드 완료:', reviews.length, '개');
             
             reviewsScroll.innerHTML = '';
             
@@ -481,7 +527,6 @@
             
         } catch (error) {
             console.error('리뷰 로딩 실패:', error);
-            // 에러 시 빈 상태 표시
             reviewsScroll.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--gray-500);">리뷰를 불러올 수 없습니다.</div>';
         }
     }
@@ -493,38 +538,43 @@
             '애플': { maxDiscount: 0, popularModel: '', count: 0 }
         };
 
-        if (allProducts.length === 0) return brandStats;
+        if (allProducts.length === 0) {
+            console.log('상품 데이터가 없어 브랜드 통계를 계산할 수 없습니다');
+            return brandStats;
+        }
 
         // 브랜드별 통계 계산
         allProducts.forEach(product => {
-            const brandInfo = getBrandInfo(product.brand);
-            const brandName = brandInfo.displayName;
+            const brand = product.brand;
             
-            if (brandName === '삼성' || brandName === '애플') {
+            if (brand === '삼성' || brand === '애플') {
                 const { discountRate } = calculateDiscount(product.model, product.principal);
                 
-                if (discountRate > brandStats[brandName].maxDiscount) {
-                    brandStats[brandName].maxDiscount = discountRate;
-                    brandStats[brandName].popularModel = product.model;
+                if (discountRate > brandStats[brand].maxDiscount) {
+                    brandStats[brand].maxDiscount = discountRate;
+                    brandStats[brand].popularModel = product.model;
                 }
-                brandStats[brandName].count++;
+                brandStats[brand].count++;
             }
         });
 
+        console.log('브랜드 통계:', brandStats);
         return brandStats;
     }
 
     // 🏢 브랜드 섹션 업데이트
     async function updateBrandSection() {
-        const brandStats = calculateBrandStats();
-        
-        // 브랜드 카드를 GitHub 데이터로 업데이트
         const brandGrid = document.querySelector('.brand-grid');
-        if (!brandGrid) return;
+        if (!brandGrid) {
+            console.error('브랜드 그리드를 찾을 수 없습니다');
+            return;
+        }
+
+        const brandStats = calculateBrandStats();
 
         try {
             // brandsData가 이미 로드되어 있으면 사용
-            if (Object.keys(brandsData).length > 0) {
+            if (brandsData && Object.keys(brandsData).length > 0) {
                 brandGrid.innerHTML = '';
                 
                 ['삼성', '애플'].forEach(brandName => {
@@ -553,6 +603,35 @@
                             <div class="stat-row">
                                 <span class="stat-label">최대 할인</span>
                                 <span class="stat-value highlight">${maxDiscount}%</span>
+                            </div>
+                        </div>
+                        <div class="brand-arrow">›</div>
+                    `;
+                    
+                    brandGrid.appendChild(brandCard);
+                });
+            } else {
+                // brandsData가 없으면 기본 브랜드 카드 생성
+                console.log('브랜드 데이터 없음, 기본값 사용');
+                brandGrid.innerHTML = '';
+                
+                ['삼성', '애플'].forEach(brandName => {
+                    const stats = brandStats[brandName];
+                    const brandCard = document.createElement('div');
+                    brandCard.className = 'brand-card';
+                    brandCard.onclick = () => selectBrand(brandName);
+                    
+                    brandCard.innerHTML = `
+                        <h4>${brandName}</h4>
+                        <p>${brandName === '삼성' ? '갤럭시 시리즈' : '아이폰 시리즈'}</p>
+                        <div class="brand-stats">
+                            <div class="stat-row">
+                                <span class="stat-label">인기 모델</span>
+                                <span class="stat-value">${stats.popularModel}</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">최대 할인</span>
+                                <span class="stat-value highlight">${stats.maxDiscount}%</span>
                             </div>
                         </div>
                         <div class="brand-arrow">›</div>
@@ -603,7 +682,6 @@
                 observer.observe(section);
             });
         } else {
-            // IntersectionObserver를 지원하지 않는 경우 바로 표시
             sections.forEach(section => {
                 section.classList.add('visible');
             });
@@ -698,6 +776,8 @@
     // 🚀 메인 초기화 함수
     async function initNofeeMain() {
         try {
+            console.log('노피 메인페이지 초기화 시작...');
+            
             // 초기 데이터 로드
             await loadInitialData();
             
@@ -743,7 +823,7 @@
     // Promise 에러 핸들러
     window.addEventListener('unhandledrejection', (e) => {
         handleError(e.reason, 'Promise');
-        e.preventDefault(); // 콘솔 에러 방지
+        e.preventDefault();
     });
 
     // 페이지 언로드 시 정리
