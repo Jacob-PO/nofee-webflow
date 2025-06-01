@@ -30,8 +30,13 @@
     };
     
     // GitHub 저장소 설정
-    const PRODUCTS_DATA_URL = 'https://jacob-po.github.io/products-data/products.json';
-    const REGIONS_DATA_URL = 'https://raw.githubusercontent.com/Jacob-PO/products-data/main/regions.json';
+    const GITHUB_BASE_URL = 'https://jacob-po.github.io/nofee-webflow';
+    // products.json이 같은 저장소에 있는 경우:
+    const PRODUCTS_DATA_URL = `${GITHUB_BASE_URL}/data/products.json`;
+    const REGIONS_DATA_URL = `${GITHUB_BASE_URL}/data/regions.json`;
+    // 외부 저장소를 사용하려면 아래 주석을 해제하고 위 줄을 주석 처리:
+    // const PRODUCTS_DATA_URL = 'https://jacob-po.github.io/products-data/products.json';
+    // const REGIONS_DATA_URL = 'https://raw.githubusercontent.com/Jacob-PO/products-data/main/regions.json';
     
     // 🎨 유틸리티 함수들
     const utils = {
