@@ -1,0 +1,22 @@
+{
+  "삼성": {
+    "icon": "S",
+    "class": "samsung",
+    "logo": "https://cdn.prod.website-files.com/6821372c9d4a7fab5de1da56/682d65f8c8c47577afcb3449_820abb49-80a9-472e-8707-d8248906007d.jpg",
+    "description": "갤럭시 시리즈",
+    "defaultModel": "S25 Ultra",
+    "defaultDiscount": 40,
+    "primaryColor": "#1f4788",
+    "secondaryColor": "#2980b9"
+  },
+  "애플": {
+    "icon": "A",
+    "class": "apple",
+    "logo": "https://cdn.prod.website-files.com/6821372c9d4a7fab5de1da56/682d63d2ec43cafff69dc89e_스크린샷 2025-05-21 오후 2.25.29.png",
+    "description": "아이폰 시리즈",
+    "defaultModel": "아이폰 16 Pro",
+    "defaultDiscount": 35,
+    "primaryColor": "#333",
+    "secondaryColor": "#666"
+  }
+}
