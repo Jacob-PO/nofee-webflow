@@ -333,6 +333,14 @@ window.NofeeChat = window.NofeeChat || {};
       await NC.showAIThinking('정보 검증 중');
       NC.addBotMessage('입력해주신 정보를 확인했습니다.\n아래 안내를 마지막으로 확인해주세요.');
       NC.fillWebflowFields();
+      const summary = [];
+      if (NC.userData.name) summary.push(`\uD83D\uDC64 ${NC.userData.name}`);
+      if (NC.userData.phone) summary.push(`\uD83D\uDCF1 ${NC.userData.phone}`);
+      if (NC.userData.region) summary.push(`\uD83D\uDCCD ${NC.userData.region} ${NC.userData.city || ''}`.trim());
+      if (NC.selectedProduct.model) summary.push(`\uD83D\uDCF2 ${NC.selectedProduct.model}`);
+      if (summary.length) {
+        NC.addBotMessage('요약 정보:\n' + summary.join('\n'));
+      }
       NC.stateIndex++;
       setTimeout(NC.nextStep, 200);
     } else if (current === 'askConsent') {
