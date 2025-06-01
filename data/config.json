@@ -1,0 +1,30 @@
+{
+  "site": {
+    "name": "노피",
+    "domain": "https://nofee.team",
+    "aiUrl": "https://www.nofee.team/ai",
+    "moreUrl": "https://nofee.team/more"
+  },
+  "api": {
+    "productsUrl": "https://raw.githubusercontent.com/jacob-po/products-data/refs/heads/main/products.json",
+    "githubBase": "https://jacob-po.github.io/nofee-webflow"
+  },
+  "settings": {
+    "minTotalPrice": 30000,
+    "productsPerBrand": 2,
+    "bannerSlideInterval": 4000,
+    "reviewScrollInterval": 3000,
+    "reviewScrollStep": 296
+  },
+  "messages": {
+    "loading": "로딩 중...",
+    "errorLoadingProducts": "상품을 불러올 수 없어요",
+    "errorLoadingReviews": "리뷰를 불러올 수 없습니다",
+    "retryButton": "다시 시도",
+    "loadMoreButton": "전체 상품 보기"
+  },
+  "rating": {
+    "total": 4.9,
+    "count": 2847
+  }
+}
