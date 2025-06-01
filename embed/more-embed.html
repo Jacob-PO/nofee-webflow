@@ -1,0 +1,106 @@
+<!-- 노피 더보기(상품검색) 페이지 - Webflow Embed Code -->
+<!-- GitHub에서 스타일과 스크립트를 불러옵니다 -->
+<link rel="stylesheet" href="https://jacob-po.github.io/nofee-webflow/styles/more.css?v=1.0.0">
+
+<!-- 상품 검색 인터페이스 -->
+<div class="container">
+    <!-- 🎯 페이지 헤더 -->
+    <div class="page-header">
+        <div class="header-content">
+            <h1 class="page-title">상품 검색</h1>
+            <p class="page-subtitle">원하는 조건으로 최적의 휴대폰을 찾아보세요</p>
+        </div>
+    </div>
+
+    <!-- 🔍 필터 섹션 -->
+    <div class="filter-section">
+        <div class="filter-group">
+            <div class="filter-dropdown">
+                <button class="filter-button" data-category="carrier">
+                    <span class="filter-text">통신사</span>
+                </button>
+                <div class="dropdown-menu" data-target="carrier">
+                    <button data-carrier="">전체</button>
+                    <button data-carrier="KT">KT</button>
+                    <button data-carrier="LGU">LG유플러스</button>
+                    <button data-carrier="SKT">SK텔레콤</button>
+                </div>
+            </div>
+
+            <div class="filter-dropdown">
+                <button class="filter-button" data-category="brand">
+                    <span class="filter-text">제조사</span>
+                </button>
+                <div class="dropdown-menu" data-target="brand">
+                    <button data-brand="">전체</button>
+                    <button data-brand="삼성">삼성</button>
+                    <button data-brand="애플">애플</button>
+                </div>
+            </div>
+
+            <div class="filter-dropdown">
+                <button class="filter-button" data-category="type">
+                    <span class="filter-text">가입유형</span>
+                </button>
+                <div class="dropdown-menu" data-target="type">
+                    <button data-type="">전체</button>
+                    <button data-type="번호이동">번호이동</button>
+                    <button data-type="기기변경">기기변경</button>
+                    <button data-type="신규가입">신규가입</button>
+                </div>
+            </div>
+
+            <div class="filter-dropdown">
+                <button class="filter-button" data-category="support">
+                    <span class="filter-text">개통옵션</span>
+                </button>
+                <div class="dropdown-menu" data-target="support">
+                    <button data-support="">전체</button>
+                    <button data-support="공시지원">공시지원</button>
+                    <button data-support="선택약정">선택약정</button>
+                </div>
+            </div>
+
+            <div class="filter-dropdown">
+                <button class="filter-button" data-category="sort">
+                    <span class="filter-text">정렬</span>
+                </button>
+                <div class="dropdown-menu" data-target="sort">
+                    <button data-sort="">기본순</button>
+                    <button data-sort="asc">월납부금 낮은순</button>
+                    <button data-sort="desc">월납부금 높은순</button>
+                    <button data-sort="discount">할인율 높은순</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 활성 필터 표시 -->
+        <div class="active-filters" id="activeFilters"></div>
+
+        <!-- 결과 정보 -->
+        <div class="results-info">
+            <div class="count-indicator">
+                총 <strong id="productCount">0</strong>개 상품이 검색되었습니다.
+            </div>
+        </div>
+    </div>
+
+    <!-- 📱 상품 섹션 -->
+    <div class="products-section">
+        <div class="products-grid" id="productList">
+            <div class="loading">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <div class="load-more" id="loadMore" style="display: none;">
+            <button class="load-more-btn" id="loadMoreBtn">
+                <span id="loadMoreText">상품 더보기</span>
+                <span>↓</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- GitHub에서 JavaScript 로드 -->
+<script src="https://jacob-po.github.io/nofee-webflow/pages/more.js?v=1.0.0"></script>
