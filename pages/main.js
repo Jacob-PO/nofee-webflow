@@ -29,18 +29,38 @@
     };
 
     const getBrandInfo = (brand) => {
+        // 영문 브랜드명을 한글로 변환
+        let normalizedBrand = brand;
+        if (brand && brand.toLowerCase() === 'samsung') {
+            normalizedBrand = '삼성';
+        } else if (brand && brand.toLowerCase() === 'apple') {
+            normalizedBrand = '애플';
+        }
+        
         // 브랜드 데이터가 로드되어 있으면 사용
-        if (brandsData && brandsData[brand]) {
-            return {
-                icon: brandsData[brand].icon,
-                class: brandsData[brand].class,
-                displayName: brand,
-                ...brandsData[brand]
-            };
+        if (brandsData) {
+            // 영문 브랜드명으로도 검색
+            if (brandsData[brand]) {
+                return {
+                    icon: brandsData[brand].icon,
+                    class: brandsData[brand].class,
+                    displayName: normalizedBrand,
+                    ...brandsData[brand]
+                };
+            }
+            // 한글 브랜드명으로 검색
+            if (brandsData[normalizedBrand]) {
+                return {
+                    icon: brandsData[normalizedBrand].icon,
+                    class: brandsData[normalizedBrand].class,
+                    displayName: normalizedBrand,
+                    ...brandsData[normalizedBrand]
+                };
+            }
         }
         
         // 기본값
-        switch(brand) {
+        switch(normalizedBrand) {
             case '삼성': return { icon: 'S', class: 'samsung', displayName: '삼성' };
             case '애플': return { icon: 'A', class: 'apple', displayName: '애플' };
             default: return { icon: '📱', class: 'etc', displayName: brand };
@@ -63,21 +83,30 @@
             }
         }
 
-        // 모델명에 따른 기본 출고가 추정
-        if (model.includes('S25 울트라') || model.includes('S25 Ultra')) return 1700000;
-        if (model.includes('S25 플러스') || model.includes('S25+')) return 1400000;
-        if (model.includes('S25')) return 1200000;
-        if (model.includes('S24 울트라') || model.includes('S24 Ultra')) return 1600000;
-        if (model.includes('S24 플러스') || model.includes('S24+')) return 1300000;
-        if (model.includes('S24')) return 1100000;
-        if (model.includes('S24 FE')) return 900000;
-        if (model.includes('Z 폴드6') || model.includes('Z Fold6')) return 2200000;
-        if (model.includes('Z 플립6') || model.includes('Z Flip6')) return 1400000;
-        if (model.includes('아이폰 16 프로 맥스') || model.includes('iPhone 16 Pro Max')) return 1900000;
-        if (model.includes('아이폰 16 프로') || model.includes('iPhone 16 Pro')) return 1550000;
-        if (model.includes('아이폰 16 플러스') || model.includes('iPhone 16 Plus')) return 1350000;
-        if (model.includes('아이폰 16')) return 1250000;
-        if (model.includes('아이폰 15')) return 1150000;
+        // 모델명에 따른 기본 출고가 추정 (영문 모델명도 처리)
+        const modelLower = model.toLowerCase();
+        
+        // Galaxy S25 시리즈
+        if (modelLower.includes('galaxy s25 ultra') || model.includes('갤럭시 S25 울트라')) return 1700000;
+        if (modelLower.includes('galaxy s25+') || modelLower.includes('galaxy s25 plus') || model.includes('갤럭시 S25 플러스')) return 1400000;
+        if (modelLower.includes('galaxy s25') || model.includes('갤럭시 S25')) return 1200000;
+        
+        // Galaxy S24 시리즈
+        if (modelLower.includes('galaxy s24 ultra') || model.includes('갤럭시 S24 울트라')) return 1600000;
+        if (modelLower.includes('galaxy s24+') || modelLower.includes('galaxy s24 plus') || model.includes('갤럭시 S24 플러스')) return 1300000;
+        if (modelLower.includes('galaxy s24 fe') || model.includes('갤럭시 S24 FE')) return 900000;
+        if (modelLower.includes('galaxy s24') || model.includes('갤럭시 S24')) return 1100000;
+        
+        // Galaxy Z 시리즈
+        if (modelLower.includes('galaxy z fold') || model.includes('갤럭시 Z 폴드')) return 2200000;
+        if (modelLower.includes('galaxy z flip') || model.includes('갤럭시 Z 플립')) return 1400000;
+        
+        // iPhone 시리즈
+        if (modelLower.includes('iphone 16 pro max') || model.includes('아이폰 16 프로 맥스')) return 1900000;
+        if (modelLower.includes('iphone 16 pro') || model.includes('아이폰 16 프로')) return 1550000;
+        if (modelLower.includes('iphone 16 plus') || model.includes('아이폰 16 플러스')) return 1350000;
+        if (modelLower.includes('iphone 16') || model.includes('아이폰 16')) return 1250000;
+        if (modelLower.includes('iphone 15') || model.includes('아이폰 15')) return 1150000;
         
         // 기본값
         return 1000000;
@@ -303,7 +332,9 @@
         card.className = 'product-card';
         
         // support 필드 처리
-        const supportText = product.support === '공시지원' ? '공시지원' : 
+        const supportText = product.support === 'O' ? '지원금O' : 
+                          product.support === 'X' ? '지원금X' :
+                          product.support === '공시지원' ? '공시지원' : 
                           product.support === '선택약정' ? '선택약정' : 
                           product.support;
         
@@ -390,6 +421,12 @@
                 const zeroCount = data.filter(p => p.principal === 0).length;
                 const positiveCount = data.filter(p => p.principal > 0).length;
                 console.log(`principal 분포 - 음수: ${negativeCount}, 0: ${zeroCount}, 양수: ${positiveCount}`);
+                
+                // 처음 5개 상품의 모델명 확인
+                console.log('상위 5개 상품 모델명:');
+                data.slice(0, 5).forEach(p => {
+                    console.log(`- ${p.model} (${p.brand})`);
+                });
             }
             
             allProducts = data;
@@ -397,8 +434,10 @@
             // 상품 필터링 및 정렬
             const filteredProducts = data
                 .filter(product => {
-                    // 브랜드 필터링
-                    if (!['삼성', '애플'].includes(product.brand)) {
+                    // 브랜드 필터링 - 영문 브랜드명 처리
+                    const brandLower = product.brand.toLowerCase();
+                    if (!['samsung', 'apple', '삼성', '애플'].includes(brandLower) && 
+                        !['Samsung', 'Apple', '삼성', '애플'].includes(product.brand)) {
                         return false;
                     }
                     
@@ -407,9 +446,6 @@
                         return false;
                     }
                     
-                    // principal이 음수인 경우 = 할인이 있는 경우
-                    // principal이 0 이상인 경우 = 추가 비용이 있거나 할인이 없는 경우
-                    // 모든 상품을 일단 포함시키고 할인율로 정렬
                     return true;
                 })
                 .map(product => {
@@ -426,18 +462,30 @@
                 });
             
             console.log('필터링된 상품:', filteredProducts.length, '개');
+            if (filteredProducts.length > 0) {
+                console.log('필터링된 상품 중 상위 3개:');
+                filteredProducts.slice(0, 3).forEach(p => {
+                    console.log(`- ${p.model} (${p.brand}) - principal: ${p.principal}, 할인율: ${p.discountRate}%`);
+                });
+            }
             
             // 각 브랜드에서 최고 할인 상품 우선, 할인이 없으면 가격이 낮은 상품 선택
             const samsungProducts = filteredProducts
-                .filter(p => p.brand === '삼성')
+                .filter(p => p.brand.toLowerCase() === 'samsung' || p.brand === '삼성')
                 .slice(0, 2);
                 
             const appleProducts = filteredProducts
-                .filter(p => p.brand === '애플')
+                .filter(p => p.brand.toLowerCase() === 'apple' || p.brand === '애플')
                 .slice(0, 2);
             
             const bestProducts = [...samsungProducts, ...appleProducts];
             console.log('베스트 상품 선정:', bestProducts.length, '개');
+            if (bestProducts.length > 0) {
+                console.log('선정된 베스트 상품:');
+                bestProducts.forEach((p, i) => {
+                    console.log(`${i+1}. ${p.model} - ${formatKRW(p.total)}`);
+                });
+            }
             
             // 로딩 숨기고 그리드 표시
             loadingElement.style.display = 'none';
@@ -603,7 +651,13 @@
 
         // 브랜드별 통계 계산
         allProducts.forEach(product => {
-            const brand = product.brand;
+            // 영문 브랜드명을 한글로 변환
+            let brand = product.brand;
+            if (brand && brand.toLowerCase() === 'samsung') {
+                brand = '삼성';
+            } else if (brand && brand.toLowerCase() === 'apple') {
+                brand = '애플';
+            }
             
             if (brand === '삼성' || brand === '애플') {
                 const { discountRate } = calculateDiscount(product.model, product.principal);
@@ -614,7 +668,7 @@
                 }
                 
                 // 가장 많이 나타나는 모델을 popularModel로 설정
-                if (!brandStats[brand].popularModel) {
+                if (!brandStats[brand].popularModel || discountRate > 0) {
                     brandStats[brand].popularModel = product.model;
                 }
                 
