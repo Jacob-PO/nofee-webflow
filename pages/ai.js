@@ -462,8 +462,8 @@ window.NofeeChat = window.NofeeChat || {};
     NC.showGreeting();
 
     Promise.all([
-      fetch('https://jacob-po.github.io/products-data/products.json').then(res => res.json()),
-      fetch('https://raw.githubusercontent.com/Jacob-PO/products-data/main/regions.json').then(res => res.json())
+      fetch('/data/products.json').then(res => res.json()),
+      fetch('/data/regions.json').then(res => res.json())
     ]).then(async ([productData, regionData]) => {
       NC.products = productData;
       NC.regionToCity = regionData;
