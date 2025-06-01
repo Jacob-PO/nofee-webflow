@@ -78,11 +78,11 @@ Webflow의 Embed Code Block에 다음 코드를 붙여넣으세요:
   ```html
   <script>
     window.NofeeDataConfig = {
-      productsUrl: '/files/products.json',
-      regionsUrl: '/files/regions.json'
+      productsUrl: '/data/products.json',
+      regionsUrl: '/data/regions.json'
     };
   </script>
-  <script src="/files/ai.js?v=1.0.6"></script>
+  <script src="/pages/ai.js?v=1.0.6"></script>
   ```
 
 ### 더보기 페이지
