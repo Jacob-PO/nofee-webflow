@@ -152,162 +152,146 @@
             return;
         }
 
+        // 기본 배너 데이터
+        const defaultBanners = [
+            {
+                title: "전국 어디서나<br><strong>성지 가격</strong>으로 드립니다",
+                subtitle: "오직 노피 입점 대리점에서만",
+                emoji: "🚀"
+            },
+            {
+                title: "부담없는 구매<br><strong>전화없이 견적신청</strong>",
+                subtitle: "신청과 카톡만으로 구매 끝!",
+                emoji: "⚡"
+            },
+            {
+                title: "전국 성지를 모두 찾아<br><strong>노피에 입점</strong> 시켰습니다",
+                subtitle: "어디서나 똑같은 가격!",
+                emoji: "🎯"
+            }
+        ];
+
+        let banners = defaultBanners;
+
         try {
-            // GitHub에서 배너 데이터 로드
+            // GitHub에서 배너 데이터 로드 시도
             const response = await fetch(BANNERS_DATA_URL);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const banners = await response.json();
-            console.log('배너 데이터 로드 완료:', banners.length, '개');
-            
-            // 배너 슬라이드 생성
-            track.innerHTML = '';
-            indicators.innerHTML = '';
-            
-            banners.forEach((banner, index) => {
-                // 슬라이드 생성
-                const slide = document.createElement('div');
-                slide.className = 'banner-slide';
-                slide.innerHTML = `
-                    <div class="slide-content">
-                        <div class="slide-text">
-                            <h3>${banner.title}</h3>
-                            <p>${banner.subtitle}</p>
-                        </div>
-                        <div class="slide-visual">${banner.emoji}</div>
-                    </div>
-                `;
-                track.appendChild(slide);
-                
-                // 인디케이터 생성
-                const indicator = document.createElement('div');
-                indicator.className = index === 0 ? 'indicator active' : 'indicator';
-                indicators.appendChild(indicator);
-            });
-
-            const slideCount = banners.length;
-
-            function goToSlide(index) {
-                currentBannerIndex = index;
-                track.style.transform = `translateX(-${currentBannerIndex * 100}%)`;
-                
-                const allIndicators = indicators.querySelectorAll('.indicator');
-                allIndicators.forEach((indicator, i) => {
-                    indicator.classList.toggle('active', i === currentBannerIndex);
-                });
-            }
-
-            function nextSlide() {
-                const nextIndex = (currentBannerIndex + 1) % slideCount;
-                goToSlide(nextIndex);
-            }
-
-            function startAutoSlide() {
-                bannerInterval = setInterval(nextSlide, 4000);
-            }
-
-            function stopAutoSlide() {
-                if (bannerInterval) {
-                    clearInterval(bannerInterval);
-                    bannerInterval = null;
+            if (response.ok) {
+                const loadedBanners = await response.json();
+                if (Array.isArray(loadedBanners) && loadedBanners.length > 0) {
+                    banners = loadedBanners;
+                    console.log('배너 데이터 로드 완료:', banners.length, '개');
                 }
             }
-
-            // 인디케이터 클릭 이벤트
-            const allIndicators = indicators.querySelectorAll('.indicator');
-            allIndicators.forEach((indicator, index) => {
-                indicator.addEventListener('click', () => {
-                    goToSlide(index);
-                    stopAutoSlide();
-                    setTimeout(startAutoSlide, 2000);
-                });
-            });
-
-            // 터치 스와이프 지원
-            let startX = 0;
-            let endX = 0;
-
-            track.addEventListener('touchstart', (e) => {
-                startX = e.touches[0].clientX;
-                stopAutoSlide();
-            }, { passive: true });
-
-            track.addEventListener('touchend', (e) => {
-                endX = e.changedTouches[0].clientX;
-                const diff = startX - endX;
-                
-                if (Math.abs(diff) > 50) {
-                    if (diff > 0) {
-                        nextSlide();
-                    } else {
-                        const prevIndex = currentBannerIndex === 0 ? slideCount - 1 : currentBannerIndex - 1;
-                        goToSlide(prevIndex);
-                    }
-                }
-                
-                setTimeout(startAutoSlide, 2000);
-            }, { passive: true });
-
-            // 마우스 호버 시 자동 슬라이드 중지
-            track.addEventListener('mouseenter', stopAutoSlide);
-            track.addEventListener('mouseleave', startAutoSlide);
-
-            startAutoSlide();
-
-            // 페이지 가시성 변경 시 처리
-            document.addEventListener('visibilitychange', () => {
-                if (document.hidden) {
-                    stopAutoSlide();
-                } else {
-                    startAutoSlide();
-                }
-            });
-
         } catch (error) {
-            console.warn('배너 로드 실패 (기본 배너 표시):', error.message);
-            // 에러 시 기본 배너 표시
-            const defaultBanners = [
-                {
-                    title: "전국 어디서나<br><strong>성지 가격</strong>으로 드립니다",
-                    subtitle: "오직 노피 입점 대리점에서만",
-                    emoji: "🚀"
-                },
-                {
-                    title: "부담없는 구매<br><strong>전화없이 견적신청</strong>",
-                    subtitle: "신청과 카톡만으로 구매 끝!",
-                    emoji: "⚡"
-                },
-                {
-                    title: "전국 성지를 모두 찾아<br><strong>노피에 입점</strong> 시켰습니다",
-                    subtitle: "어디서나 똑같은 가격!",
-                    emoji: "🎯"
-                }
-            ];
-            
-            track.innerHTML = '';
-            indicators.innerHTML = '';
-            
-            defaultBanners.forEach((banner, index) => {
-                const slide = document.createElement('div');
-                slide.className = 'banner-slide';
-                slide.innerHTML = `
-                    <div class="slide-content">
-                        <div class="slide-text">
-                            <h3>${banner.title}</h3>
-                            <p>${banner.subtitle}</p>
-                        </div>
-                        <div class="slide-visual">${banner.emoji}</div>
+            console.warn('배너 파일 로드 실패, 기본 배너 사용:', error.message);
+        }
+
+        // 배너 슬라이드 생성
+        track.innerHTML = '';
+        indicators.innerHTML = '';
+        
+        banners.forEach((banner, index) => {
+            // 슬라이드 생성
+            const slide = document.createElement('div');
+            slide.className = 'banner-slide';
+            slide.innerHTML = `
+                <div class="slide-content">
+                    <div class="slide-text">
+                        <h3>${banner.title}</h3>
+                        <p>${banner.subtitle}</p>
                     </div>
-                `;
-                track.appendChild(slide);
-                
-                const indicator = document.createElement('div');
-                indicator.className = index === 0 ? 'indicator active' : 'indicator';
-                indicators.appendChild(indicator);
+                    <div class="slide-visual">${banner.emoji}</div>
+                </div>
+            `;
+            track.appendChild(slide);
+            
+            // 인디케이터 생성
+            const indicator = document.createElement('div');
+            indicator.className = index === 0 ? 'indicator active' : 'indicator';
+            indicators.appendChild(indicator);
+        });
+
+        const slideCount = banners.length;
+        if (slideCount === 0) return;
+
+        function goToSlide(index) {
+            currentBannerIndex = index;
+            track.style.transform = `translateX(-${currentBannerIndex * 100}%)`;
+            
+            const allIndicators = indicators.querySelectorAll('.indicator');
+            allIndicators.forEach((indicator, i) => {
+                indicator.classList.toggle('active', i === currentBannerIndex);
             });
         }
+
+        function nextSlide() {
+            const nextIndex = (currentBannerIndex + 1) % slideCount;
+            goToSlide(nextIndex);
+        }
+
+        function startAutoSlide() {
+            if (slideCount > 1) {
+                bannerInterval = setInterval(nextSlide, 4000);
+            }
+        }
+
+        function stopAutoSlide() {
+            if (bannerInterval) {
+                clearInterval(bannerInterval);
+                bannerInterval = null;
+            }
+        }
+
+        // 인디케이터 클릭 이벤트
+        const allIndicators = indicators.querySelectorAll('.indicator');
+        allIndicators.forEach((indicator, index) => {
+            indicator.addEventListener('click', () => {
+                goToSlide(index);
+                stopAutoSlide();
+                setTimeout(startAutoSlide, 2000);
+            });
+        });
+
+        // 터치 스와이프 지원
+        let startX = 0;
+        let endX = 0;
+
+        track.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            stopAutoSlide();
+        }, { passive: true });
+
+        track.addEventListener('touchend', (e) => {
+            endX = e.changedTouches[0].clientX;
+            const diff = startX - endX;
+            
+            if (Math.abs(diff) > 50 && slideCount > 1) {
+                if (diff > 0) {
+                    nextSlide();
+                } else {
+                    const prevIndex = currentBannerIndex === 0 ? slideCount - 1 : currentBannerIndex - 1;
+                    goToSlide(prevIndex);
+                }
+            }
+            
+            setTimeout(startAutoSlide, 2000);
+        }, { passive: true });
+
+        // 마우스 호버 시 자동 슬라이드 중지
+        track.addEventListener('mouseenter', stopAutoSlide);
+        track.addEventListener('mouseleave', startAutoSlide);
+
+        startAutoSlide();
+
+        // 페이지 가시성 변경 시 처리
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopAutoSlide();
+            } else {
+                startAutoSlide();
+            }
+        });
     }
 
     // 🏆 상품 카드 생성
@@ -391,6 +375,23 @@
             const data = await response.json();
             console.log('전체 상품 데이터 로드 완료:', data.length, '개');
             
+            // 데이터 샘플 확인
+            if (data.length > 0) {
+                console.log('첫 번째 상품 데이터:', data[0]);
+                console.log('브랜드별 상품 수:');
+                const brandCounts = {};
+                data.forEach(p => {
+                    brandCounts[p.brand] = (brandCounts[p.brand] || 0) + 1;
+                });
+                console.log(brandCounts);
+                
+                // principal 값 분포 확인
+                const negativeCount = data.filter(p => p.principal < 0).length;
+                const zeroCount = data.filter(p => p.principal === 0).length;
+                const positiveCount = data.filter(p => p.principal > 0).length;
+                console.log(`principal 분포 - 음수: ${negativeCount}, 0: ${zeroCount}, 양수: ${positiveCount}`);
+            }
+            
             allProducts = data;
             
             // 상품 필터링 및 정렬
@@ -406,22 +407,27 @@
                         return false;
                     }
                     
-                    // principal이 음수인 경우만 (할인이 있는 경우)
-                    if (product.principal >= 0) {
-                        return false;
-                    }
-                    
+                    // principal이 음수인 경우 = 할인이 있는 경우
+                    // principal이 0 이상인 경우 = 추가 비용이 있거나 할인이 없는 경우
+                    // 모든 상품을 일단 포함시키고 할인율로 정렬
                     return true;
                 })
                 .map(product => {
                     const { discountRate } = calculateDiscount(product.model, product.principal);
                     return { ...product, discountRate };
                 })
-                .sort((a, b) => b.discountRate - a.discountRate);
+                .sort((a, b) => {
+                    // 할인율이 높은 순으로 정렬 (할인이 없거나 추가비용인 경우는 뒤로)
+                    if (a.discountRate === 0 && b.discountRate === 0) {
+                        // 둘 다 할인이 없으면 total이 낮은 순
+                        return a.total - b.total;
+                    }
+                    return b.discountRate - a.discountRate;
+                });
             
             console.log('필터링된 상품:', filteredProducts.length, '개');
             
-            // 삼성과 애플 각각 할인율 높은 상품 2개씩
+            // 각 브랜드에서 최고 할인 상품 우선, 할인이 없으면 가격이 낮은 상품 선택
             const samsungProducts = filteredProducts
                 .filter(p => p.brand === '삼성')
                 .slice(0, 2);
@@ -586,8 +592,8 @@
     // 🏢 브랜드 통계 계산
     function calculateBrandStats() {
         const brandStats = {
-            '삼성': { maxDiscount: 0, popularModel: '', count: 0 },
-            '애플': { maxDiscount: 0, popularModel: '', count: 0 }
+            '삼성': { maxDiscount: 0, popularModel: '', count: 0, maxDiscountModel: '' },
+            '애플': { maxDiscount: 0, popularModel: '', count: 0, maxDiscountModel: '' }
         };
 
         if (allProducts.length === 0) {
@@ -604,13 +610,22 @@
                 
                 if (discountRate > brandStats[brand].maxDiscount) {
                     brandStats[brand].maxDiscount = discountRate;
+                    brandStats[brand].maxDiscountModel = product.model;
+                }
+                
+                // 가장 많이 나타나는 모델을 popularModel로 설정
+                if (!brandStats[brand].popularModel) {
                     brandStats[brand].popularModel = product.model;
                 }
+                
                 brandStats[brand].count++;
             }
         });
 
-        console.log('브랜드 통계:', brandStats);
+        console.log('브랜드 통계:');
+        console.log('삼성 -', brandStats['삼성']);
+        console.log('애플 -', brandStats['애플']);
+        
         return brandStats;
     }
 
