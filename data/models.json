@@ -4,15 +4,30 @@
     "brand": "삼성",
     "category": "플래그십"
   },
+  "Galaxy S25 256GB": {
+    "originPrice": 1200000,
+    "brand": "Samsung",
+    "category": "Flagship"
+  },
   "갤럭시 S25 플러스 256GB": {
     "originPrice": 1400000,
     "brand": "삼성",
     "category": "플래그십"
   },
+  "Galaxy S25+ 256GB": {
+    "originPrice": 1400000,
+    "brand": "Samsung",
+    "category": "Flagship"
+  },
   "갤럭시 S25 울트라 256GB": {
     "originPrice": 1700000,
     "brand": "삼성",
     "category": "플래그십"
+  },
+  "Galaxy S25 Ultra 256GB": {
+    "originPrice": 1700000,
+    "brand": "Samsung",
+    "category": "Flagship"
   },
   "갤럭시 S24 256GB": {
     "originPrice": 1100000,
@@ -69,25 +84,50 @@
     "brand": "애플",
     "category": "플래그십"
   },
+  "iPhone 16 128GB": {
+    "originPrice": 1250000,
+    "brand": "Apple",
+    "category": "Flagship"
+  },
   "아이폰 16 256GB": {
     "originPrice": 1350000,
     "brand": "애플",
     "category": "플래그십"
+  },
+  "iPhone 16 256GB": {
+    "originPrice": 1350000,
+    "brand": "Apple",
+    "category": "Flagship"
   },
   "아이폰 16 프로 128GB": {
     "originPrice": 1550000,
     "brand": "애플",
     "category": "프로"
   },
+  "iPhone 16 Pro 128GB": {
+    "originPrice": 1550000,
+    "brand": "Apple",
+    "category": "Pro"
+  },
   "아이폰 16 프로 256GB": {
     "originPrice": 1650000,
     "brand": "애플",
     "category": "프로"
   },
+  "iPhone 16 Pro 256GB": {
+    "originPrice": 1650000,
+    "brand": "Apple",
+    "category": "Pro"
+  },
   "아이폰 16 프로 맥스 256GB": {
     "originPrice": 1900000,
     "brand": "애플",
     "category": "프로"
+  },
+  "iPhone 16 Pro Max 256GB": {
+    "originPrice": 1900000,
+    "brand": "Apple",
+    "category": "Pro"
   },
   "아이폰 16 프로 맥스 512GB": {
     "originPrice": 2100000,
