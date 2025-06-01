@@ -458,12 +458,43 @@ window.NofeeChat = window.NofeeChat || {};
     return false;
   };
 
+  // 디버그 패널 설정
+  function setupDebugPanel() {
+    let statusEl = document.getElementById('debugStatus');
+    if (!statusEl) {
+      const panel = document.createElement('div');
+      panel.className = 'debug-panel';
+      panel.innerHTML = '<h4>디버그 정보</h4><div id="debugStatus"></div>';
+      document.body.appendChild(panel);
+      statusEl = panel.querySelector('#debugStatus');
+    }
+
+    function addDebug(message, isError = false) {
+      const div = document.createElement('div');
+      div.className = 'status ' + (isError ? 'error' : 'success');
+      div.textContent = message;
+      statusEl.appendChild(div);
+    }
+
+    const origLog = console.log;
+    const origErr = console.error;
+    console.log = (...args) => { origLog.apply(console, args); addDebug(args.join(' ')); };
+    console.error = (...args) => { origErr.apply(console, args); addDebug(args.join(' '), true); };
+
+    window.addEventListener('load', () => addDebug('페이지 로드 완료'));
+  }
+
   // 초기화 함수
   NC.init = function() {
+    setupDebugPanel();
+
     NC.chatContainer = document.getElementById('chatbot');
     if (!NC.chatContainer) {
-      console.error('chatbot 컨테이너를 찾을 수 없습니다');
-      return;
+      console.warn('chatbot 컨테이너를 찾을 수 없어 새로 생성합니다');
+      NC.chatContainer = document.createElement('div');
+      NC.chatContainer.id = 'chatbot';
+      const target = document.querySelector('.nofee-embed') || document.body;
+      target.appendChild(NC.chatContainer);
     }
 
     NC.showGreeting();
