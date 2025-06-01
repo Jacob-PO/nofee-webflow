@@ -12,11 +12,10 @@
 
     // GitHub 저장소 설정
     const GITHUB_BASE_URL = 'https://jacob-po.github.io/nofee-webflow';
-    // products.json은 별도 저장소에 있는지 확인 필요
-    // 만약 404 에러가 계속되면 아래 URL을 변경하세요
-    const PRODUCTS_DATA_URL = 'https://raw.githubusercontent.com/jacob-po/products-data/main/products.json';
-    // 또는 같은 저장소에 있다면:
-    // const PRODUCTS_DATA_URL = `${GITHUB_BASE_URL}/data/products.json`;
+    // products.json을 같은 저장소로 이동한 경우:
+    const PRODUCTS_DATA_URL = `${GITHUB_BASE_URL}/data/products.json`;
+    // 외부 저장소를 계속 사용하려면 아래 주석을 해제하고 위 줄을 주석처리:
+    // const PRODUCTS_DATA_URL = 'https://raw.githubusercontent.com/jacob-po/products-data/main/products.json';
     
     const REVIEWS_DATA_URL = `${GITHUB_BASE_URL}/data/review.json`;
     const BANNERS_DATA_URL = `${GITHUB_BASE_URL}/data/banners.json`;
