@@ -6,7 +6,7 @@ Webflow와 GitHub를 연동한 코드 관리 시스템
 ```
 nofee_webflow/
 ├── data/               # JSON 데이터 파일
-│   ├── products.json   # 상품 데이터
+│   ├── products.json   # 상품 데이터 (외부 저장소)
 │   ├── review.json     # 리뷰 데이터
 │   ├── regions.json    # 지역 정보
 │   ├── banners.json    # 배너 슬라이드 데이터
@@ -62,7 +62,7 @@ Webflow의 Embed Code Block에 다음 코드를 붙여넣으세요:
 ### 메인 페이지
 - **파일**: `pages/main.js`, `styles/shared.css`
 - **데이터**: 
-  - `products.json`
+  - `products.json` (외부 저장소)
   - `review.json` (고객 리뷰)
   - `banners.json` (배너 슬라이드)
   - `brands.json` (브랜드 정보)
@@ -74,16 +74,6 @@ Webflow의 Embed Code Block에 다음 코드를 붙여넣으세요:
 - **파일**: `pages/ai.js`
 - **데이터**: `data/products.json`
 - **기능**: AI 챗봇 인터페이스
-- **데이터 경로 커스터마이즈**:
-  ```html
-  <script>
-    window.NofeeDataConfig = {
-      productsUrl: '/data/products.json',
-      regionsUrl: '/data/regions.json'
-    };
-  </script>
-  <script src="/pages/ai.js?v=1.0.6"></script>
-  ```
 
 ### 더보기 페이지
 - **파일**: `pages/more.js`
@@ -93,7 +83,7 @@ Webflow의 Embed Code Block에 다음 코드를 붙여넣으세요:
 ## 📊 데이터 파일 설명
 
 ### products.json
-- **위치**: `data/products.json` (현재 저장소)
+- **위치**: 외부 저장소 (jacob-po/products-data)
 - **내용**: 전체 상품 데이터 (가격, 할인, 통신사 등)
 
 ### review.json
