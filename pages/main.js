@@ -101,11 +101,29 @@
         try {
             console.log('초기 데이터 로드 시작...');
             
-            // 모든 설정 데이터를 병렬로 로드
+            // 모든 설정 데이터를 병렬로 로드 (선택적)
             const [configRes, modelsRes, brandsRes] = await Promise.all([
-                fetch(CONFIG_DATA_URL).catch(() => null),
-                fetch(MODELS_DATA_URL).catch(() => null),
-                fetch(BRANDS_DATA_URL).catch(() => null)
+                fetch(CONFIG_DATA_URL).then(r => {
+                    if (!r.ok) throw new Error(`Config: ${r.status}`);
+                    return r;
+                }).catch(err => {
+                    console.warn('Config 데이터 로드 실패 (선택적):', err.message);
+                    return null;
+                }),
+                fetch(MODELS_DATA_URL).then(r => {
+                    if (!r.ok) throw new Error(`Models: ${r.status}`);
+                    return r;
+                }).catch(err => {
+                    console.warn('Models 데이터 로드 실패 (선택적):', err.message);
+                    return null;
+                }),
+                fetch(BRANDS_DATA_URL).then(r => {
+                    if (!r.ok) throw new Error(`Brands: ${r.status}`);
+                    return r;
+                }).catch(err => {
+                    console.warn('Brands 데이터 로드 실패 (선택적):', err.message);
+                    return null;
+                })
             ]);
 
             if (configRes && configRes.ok) {
@@ -121,7 +139,7 @@
                 console.log('Brands 데이터 로드 완료');
             }
         } catch (error) {
-            console.error('초기 데이터 로드 실패:', error);
+            console.warn('초기 데이터 로드 중 일부 실패 (계속 진행):', error.message);
         }
     }
 
@@ -138,7 +156,9 @@
         try {
             // GitHub에서 배너 데이터 로드
             const response = await fetch(BANNERS_DATA_URL);
-            if (!response.ok) throw new Error('배너 데이터 로드 실패');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             
             const banners = await response.json();
             console.log('배너 데이터 로드 완료:', banners.length, '개');
@@ -247,19 +267,47 @@
             });
 
         } catch (error) {
-            console.error('배너 로드 실패:', error);
+            console.warn('배너 로드 실패 (기본 배너 표시):', error.message);
             // 에러 시 기본 배너 표시
-            track.innerHTML = `
-                <div class="banner-slide">
+            const defaultBanners = [
+                {
+                    title: "전국 어디서나<br><strong>성지 가격</strong>으로 드립니다",
+                    subtitle: "오직 노피 입점 대리점에서만",
+                    emoji: "🚀"
+                },
+                {
+                    title: "부담없는 구매<br><strong>전화없이 견적신청</strong>",
+                    subtitle: "신청과 카톡만으로 구매 끝!",
+                    emoji: "⚡"
+                },
+                {
+                    title: "전국 성지를 모두 찾아<br><strong>노피에 입점</strong> 시켰습니다",
+                    subtitle: "어디서나 똑같은 가격!",
+                    emoji: "🎯"
+                }
+            ];
+            
+            track.innerHTML = '';
+            indicators.innerHTML = '';
+            
+            defaultBanners.forEach((banner, index) => {
+                const slide = document.createElement('div');
+                slide.className = 'banner-slide';
+                slide.innerHTML = `
                     <div class="slide-content">
                         <div class="slide-text">
-                            <h3>전국 어디서나<br><strong>성지 가격</strong>으로 드립니다</h3>
-                            <p>오직 노피 입점 대리점에서만</p>
+                            <h3>${banner.title}</h3>
+                            <p>${banner.subtitle}</p>
                         </div>
-                        <div class="slide-visual">🚀</div>
+                        <div class="slide-visual">${banner.emoji}</div>
                     </div>
-                </div>
-            `;
+                `;
+                track.appendChild(slide);
+                
+                const indicator = document.createElement('div');
+                indicator.className = index === 0 ? 'indicator active' : 'indicator';
+                indicators.appendChild(indicator);
+            });
         }
     }
 
