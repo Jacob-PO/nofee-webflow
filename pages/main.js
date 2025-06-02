@@ -63,7 +63,7 @@
             return element;
         },
 
-        transformProducts: (data) => {
+        transformProduct: (item) => {
             const modelMap = {
                 'S25-256': '갤럭시 S25 256GB',
                 'S25플러스-256': '갤럭시 S25 플러스 256GB',
@@ -88,24 +88,25 @@
             const typeMap = { '이동': '번호이동', '기변': '기기변경' };
             const supportMap = { '공시': '공시지원', '선약': '선택약정' };
 
-            if (!Array.isArray(data)) return [];
+            const t = { ...item };
+            t.carrier = carrierMap[item.carrier] || item.carrier;
+            t.type = typeMap[item.contract_type] || item.contract_type;
+            t.support = supportMap[item.subsidy_type] || item.subsidy_type;
+            t.model = modelMap[item.model_name] || item.model_name;
+            t.principal = item.device_principal || 0;
+            t.plan_name = item.plan_monthly_payment || 0;
+            t.change_plan = item.post_plan_monthly_payment || 0;
+            t.contract_period = item.contract_months || 0;
+            t.plan_period = item.plan_required_months || 0;
+            t.plan = item.plan_effective_monthly_payment || 0;
+            t.installment = item.device_monthly_payment || 0;
+            t.total = item.total_monthly_payment || 0;
+            return t;
+        },
 
-            return data.map(item => ({
-                date: item.date,
-                carrier: carrierMap[item.carrier] || item.carrier,
-                brand: item.brand || '',
-                type: typeMap[item.contract_type] || item.contract_type,
-                support: supportMap[item.subsidy_type] || item.subsidy_type,
-                model: modelMap[item.model_name] || item.model_name,
-                principal: item.device_principal || 0,
-                plan_name: item.plan_monthly_payment || 0,
-                change_plan: item.post_plan_monthly_payment || 0,
-                contract_period: item.contract_months || 0,
-                plan_period: item.plan_required_months || 0,
-                plan: item.plan_effective_monthly_payment || 0,
-                installment: item.device_monthly_payment || 0,
-                total: item.total_monthly_payment || 0
-            }));
+        transformProducts: (data) => {
+            if (!Array.isArray(data)) return [];
+            return data.map(utils.transformProduct);
         },
 
         setElementContent: (selector, content, isHTML = false) => {
@@ -928,17 +929,24 @@
             const baseUrl = state.config?.urls?.product || 'https://nofee.team/ai';
             
             const params = new URLSearchParams({
-                model: product.model || "",
-                carrier: product.carrier || "",
-                type: product.type || "",
-                support: product.support || "",
-                brand: product.brand || "",
-                principal: product.principal || 0,
-                plan_name: product.plan_name || "",
-                plan_period: product.plan_period || "",
-                plan: product.plan || 0,
-                installment: product.installment || 0,
-                total: product.total || 0
+                date: product.date || '',
+                carrier: product.carrier || '',
+                model_name: product.model_name || '',
+                contract_type: product.contract_type || '',
+                device_price_input: product.device_price_input || 0,
+                subsidy_type: product.subsidy_type || '',
+                plan_name: product.plan_name || '',
+                contract_months: product.contract_months || 0,
+                device_principal: product.device_principal || 0,
+                plan_monthly_payment: product.plan_monthly_payment || 0,
+                post_plan_monthly_payment: product.post_plan_monthly_payment || 0,
+                plan_required_months: product.plan_required_months || 0,
+                optional_discount_ratio: product.optional_discount_ratio || 0,
+                device_monthly_payment: product.device_monthly_payment || 0,
+                plan_effective_monthly_payment: product.plan_effective_monthly_payment || 0,
+                total_monthly_payment: product.total_monthly_payment || 0,
+                brand: product.brand || '',
+                storage: product.storage || ''
             });
             
             window.open(baseUrl + '?' + params.toString(), '_blank');
