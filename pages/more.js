@@ -31,7 +31,8 @@
     
     // GitHub 저장소 설정
     // const PRODUCTS_DATA_URL = 'https://jacob-po.github.io/products-data/products.json';
-    const GITHUB_BASE_URL = 'https://jacob-po.github.io/nofee-webflow';
+    const basePath = window.location.pathname.startsWith('/nofee-webflow') ? '/nofee-webflow' : '';
+    const GITHUB_BASE_URL = window.location.origin + basePath;
     const PRODUCTS_DATA_URL = `${GITHUB_BASE_URL}/data/products.json`;
     const MODELS_DATA_URL = `${GITHUB_BASE_URL}/data/models.json`;
 
