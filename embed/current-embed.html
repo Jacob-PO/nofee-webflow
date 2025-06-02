@@ -1,0 +1,70 @@
+<!-- 노피 최근 본 상품 페이지 - Webflow Embed Code -->
+<!-- GitHub에서 스타일과 스크립트를 불러옵니다 -->
+<link rel="stylesheet" href="https://jacob-po.github.io/nofee-webflow/styles/current.css?v=1.0.0">
+
+<!-- 최근 본 상품 페이지 컨텐츠 -->
+<div class="container">
+    <!-- 페이지 헤더 -->
+    <div class="page-header">
+        <h1 class="page-title">최근 본 상품</h1>
+        <p class="page-subtitle">고객님이 최근에 확인하신 상품들입니다</p>
+    </div>
+    
+    <!-- 컨트롤 영역 -->
+    <div class="controls">
+        <div class="controls-left">
+            <!-- 정렬 선택 -->
+            <div class="select-wrapper">
+                <label class="select-label">정렬</label>
+                <select id="sortSelect">
+                    <option value="recent">최신순</option>
+                    <option value="name">이름순</option>
+                    <option value="price">낮은 가격순</option>
+                    <option value="priceDesc">높은 가격순</option>
+                </select>
+            </div>
+            
+            <!-- 브랜드 필터 -->
+            <div class="select-wrapper">
+                <label class="select-label">브랜드</label>
+                <select id="brandFilter">
+                    <option value="all">전체</option>
+                    <option value="삼성">삼성</option>
+                    <option value="애플">애플</option>
+                </select>
+            </div>
+            
+            <!-- 통계 정보 -->
+            <div class="stats-info">
+                총 <strong id="totalCount">0</strong>개 중 <strong id="filteredCount">0</strong>개 표시
+            </div>
+        </div>
+        
+        <div class="controls-right">
+            <!-- 새로고침 버튼 -->
+            <button class="btn btn-secondary" id="refreshBtn">
+                <span>🔄</span>
+                <span>새로고침</span>
+            </button>
+            
+            <!-- 전체 삭제 버튼 -->
+            <button class="btn btn-danger" id="clearAllBtn">
+                <span>🗑️</span>
+                <span>전체 삭제</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- 상품 리스트 -->
+    <div class="viewed-list" id="productList">
+        <!-- 상품들이 JavaScript로 동적 생성됩니다 -->
+    </div>
+    
+    <!-- 페이지네이션 -->
+    <div class="pagination" id="pagination" style="display: none;">
+        <!-- 페이지 버튼들이 JavaScript로 동적 생성됩니다 -->
+    </div>
+</div>
+
+<!-- GitHub에서 JavaScript 로드 -->
+<script src="https://jacob-po.github.io/nofee-webflow/pages/current.js?v=1.0.0"></script>
