@@ -1,548 +1,513 @@
-// 🚀 노피 상품검색 - GitHub 관리용 v3.2
-// GitHub: https://github.com/Jacob-PO/nofee-webflow/blob/main/pages/more.js
-// HTML+CSS 통합 임베드 + 완전한 상품 데이터 전달
-
-console.log('🔥 more.js v3.2 로드 시작 - 완전한 상품 데이터 전달');
-
-// 🎯 즉시 실행 함수로 전역 오염 방지
+// 🚀 노피 더보기 페이지 스크립트 v4.0 - 토스 스타일
 (function() {
     'use strict';
     
-    // 🔍 디버그 정보
-    console.log('🔍 현재 페이지 정보:');
-    console.log('  - Origin:', window.location.origin);
-    console.log('  - Pathname:', window.location.pathname);
-    console.log('  - Host:', window.location.host);
-    
-    // 🎯 전역 상태
-    const appState = {
+    // 🎯 전역 상태 관리
+    let state = {
+        config: null,
         products: [],
         filteredProducts: [],
+        brands: {},
+        models: {},
         currentPage: 1,
         pageSize: 12,
-        isLoading: false,
-        filters: {
-            carrier: '',
-            brand: '',
-            type: '',
-            support: '',
-            sort: ''
-        }
+        isDataLoaded: false,
+        loadingErrors: [],
+        activeFilter: 'all', // 'hot', 'save', 'guarantee', 'all'
+        activeSortBy: 'discount' // 'discount', 'asc', 'desc'
     };
+
+    // GitHub 저장소 설정
+    const scriptUrl = new URL(document.currentScript.src);
+    const basePath = scriptUrl.pathname.split('/').slice(0, -2).join('/');
+    const GITHUB_BASE_URL = scriptUrl.origin + basePath;
     
-    // 📡 데이터 URLs (로그에서 성공한 URL 사용)
+    // 📂 데이터 URL 설정
     const DATA_URLS = {
-        products: 'https://raw.githubusercontent.com/jacob-po/nofee-webflow/main/data/products.json',
-        models: 'https://raw.githubusercontent.com/jacob-po/nofee-webflow/main/data/models.json'
+        config: `${GITHUB_BASE_URL}/data/config.json`,
+        products: `${GITHUB_BASE_URL}/data/products.json`,
+        brands: `${GITHUB_BASE_URL}/data/brands.json`,
+        models: `${GITHUB_BASE_URL}/data/models.json`
     };
-    
-    let modelsData = {};
-    
-    // 🎨 유틸리티 함수들
+
+    // 🔧 유틸리티 함수들
     const utils = {
         formatKRW: (value) => {
-            return Math.abs(Number(value)).toLocaleString("ko-KR") + "원";
-        },
-        
-        getBrandInfo: (brand) => {
-            const brandMap = {
-                '삼성': { icon: 'S', class: 'samsung', displayName: '삼성' },
-                '애플': { icon: 'A', class: 'apple', displayName: '애플' },
-                'Samsung': { icon: 'S', class: 'samsung', displayName: '삼성' },
-                'Apple': { icon: 'A', class: 'apple', displayName: '애플' }
-            };
-            return brandMap[brand] || { icon: '📱', class: 'etc', displayName: brand };
-        },
-        
-        normalizeBrand: (brand) => {
-            if (!brand) return '';
-            const brandLower = brand.toLowerCase();
-            if (brandLower === 'samsung') return '삼성';
-            if (brandLower === 'apple') return '애플';
-            return brand;
-        },
-        
-        getOriginPrice: (model) => {
-            // Models 데이터에서 찾기
-            if (modelsData && modelsData[model]) {
-                return modelsData[model].originPrice;
+            const num = Math.abs(Number(value));
+            if (num >= 10000) {
+                return Math.floor(num / 10000) + '만원';
             }
-            
-            // 기본 가격 매핑
-            const modelLower = model.toLowerCase();
-            
-            if (modelLower.includes('galaxy s25 ultra') || model.includes('갤럭시 S25 울트라')) return 1700000;
-            if (modelLower.includes('galaxy s25+') || model.includes('갤럭시 S25 플러스')) return 1400000;
-            if (modelLower.includes('galaxy s25')) return 1200000;
-            if (modelLower.includes('galaxy s24 ultra')) return 1600000;
-            if (modelLower.includes('galaxy s24+')) return 1300000;
-            if (modelLower.includes('galaxy s24 fe')) return 900000;
-            if (modelLower.includes('galaxy s24')) return 1100000;
-            if (modelLower.includes('iphone 16 pro max')) return 1900000;
-            if (modelLower.includes('iphone 16 pro')) return 1550000;
-            if (modelLower.includes('iphone 16 plus')) return 1350000;
-            if (modelLower.includes('iphone 16')) return 1250000;
-            if (modelLower.includes('iphone 15')) return 1150000;
-            
-            return 1000000; // 기본값
+            return num.toLocaleString("ko-KR") + "원";
         },
-        
-        calculateDiscount: (originalPrice, principal) => {
-            const origin = Number(originalPrice) || 0;
-            const principalAmount = Number(principal) || 0;
 
-            if (origin === 0) return { discount: 0, discountRate: 0 };
-            
-            const discount = Math.abs(principalAmount);
-            const discountRate = Math.round((discount / origin) * 100);
-            
-            return { discount, discountRate };
+        sanitizeHTML: (str) => {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
         },
 
         transformProduct: (item) => {
             const modelMap = {
                 'S25-256': '갤럭시 S25 256GB',
-                'S25플러스-256': '갤럭시 S25 플러스 256GB',
-                'S25울트라-256': '갤럭시 S25 울트라 256GB',
+                'S25플러스-256': '갤럭시 S25+ 256GB',
+                'S25울트라-256': '갤럭시 S25 Ultra 256GB',
                 'S24FE': '갤럭시 S24 FE',
                 '플립6-256': '갤럭시 Z 플립6 256GB',
-                '플립5-256': '갤럭시 Z 플립5 256GB',
                 '폴드6-256': '갤럭시 Z 폴드6 256GB',
-                '와이드7': '갤럭시 와이드7',
-                'A16': '갤럭시 A16',
                 '아이폰16-128': '아이폰 16 128GB',
-                '아이폰16-256': '아이폰 16 256GB',
-                '아이폰16프로-128': '아이폰 16 Pro 128GB',
                 '아이폰16프로-256': '아이폰 16 Pro 256GB',
-                '아이폰16프로맥스-256': '아이폰 16 Pro Max 256GB',
-                '아이폰15-128': '아이폰 15 128GB',
-                '아이폰15프로-128': '아이폰 15 Pro 128GB',
-                '시나모롤 키즈폰': '시나모롤 키즈폰',
-                '키즈폰 무너': '키즈폰 무너'
+                '아이폰16프로맥스-256': '아이폰 16 Pro Max 256GB'
             };
-            const carrierMap = { SK: 'SKT', KT: 'KT', LG: 'LGU' };
+            
+            const carrierMap = { SK: 'SKT', KT: 'KT', LG: 'LGU+' };
             const typeMap = { '이동': '번호이동', '기변': '기기변경' };
-            const supportMap = { '공시': '공시지원', '선약': '선택약정' };
 
-            const t = { ...item };
-            t.carrier = carrierMap[item.carrier] || item.carrier;
-            t.type = typeMap[item.contract_type] || item.contract_type;
-            t.support = supportMap[item.subsidy_type] || item.subsidy_type;
-            t.model = modelMap[item.model_name] || item.model_name;
-            t.principal = item.device_principal || 0;
-            t.plan_name = item.plan_monthly_payment || 0;
-            t.change_plan = item.post_plan_monthly_payment || 0;
-            t.contract_period = item.contract_months || 0;
-            t.plan_period = item.plan_required_months || 0;
-            t.plan = item.plan_effective_monthly_payment || 0;
-            t.installment = item.device_monthly_payment || 0;
-            t.total = item.total_monthly_payment || 0;
-            t.originPrice = item.originPrice || utils.getOriginPrice(modelMap[item.model_name] || item.model_name);
-            return t;
+            // 원본 데이터 보존하면서 변환된 데이터 추가
+            const transformed = { 
+                ...item, // 원본 데이터 모두 보존
+                // UI 표시용 변환된 데이터 추가
+                displayCarrier: carrierMap[item.carrier] || item.carrier,
+                displayType: typeMap[item.contract_type] || item.contract_type,
+                displayModel: modelMap[item.model_name] || item.model_name,
+                // 계산된 필드들
+                principal: item.device_principal || 0,
+                plan: item.plan_effective_monthly_payment || 0,
+                installment: item.device_monthly_payment || 0,
+                total: item.total_monthly_payment || 0,
+                contract_period: item.contract_months || 24
+            };
+
+            return transformed;
         },
 
         transformProducts: (data) => {
             if (!Array.isArray(data)) return [];
             return data.map(utils.transformProduct);
+        },
+
+        getUrlParams: () => {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                filter: params.get('filter') || 'all',
+                sort: params.get('sort') || 'discount'
+            };
         }
     };
-    
-    // 📊 데이터 로더
+
+    // 📥 데이터 로더
     const dataLoader = {
-        async loadData() {
+        async fetchData(url, name, isOptional = false) {
             try {
-                console.log('📡 데이터 로드 시작...');
-                appState.isLoading = true;
+                console.log(`📥 Loading ${name} from ${url}`);
+                const response = await fetch(url);
                 
-                // UI 업데이트
-                ui.showLoading();
-                
-                // Products 데이터 로드
-                console.log('📱 Products 로드 중...');
-                const productsResponse = await fetch(DATA_URLS.products + '?v=' + Date.now());
-                
-                if (!productsResponse.ok) {
-                    throw new Error(`Products 로드 실패: ${productsResponse.status}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
-                const rawProducts = await productsResponse.json();
-                console.log(`✅ Products 로드 성공: ${rawProducts.length}개`);
+                const data = await response.json();
+                console.log(`✅ ${name} loaded successfully`);
+                return data;
+            } catch (error) {
+                if (isOptional) {
+                    console.warn(`⚠️ Optional ${name} load failed:`, error.message);
+                    return null;
+                } else {
+                    console.error(`❌ Failed to load ${name}:`, error.message);
+                    state.loadingErrors.push({ name, error: error.message });
+                    throw error;
+                }
+            }
+        },
+
+        async loadAllData() {
+            try {
+                console.log('🚀 노피 더보기 데이터 로드 시작...');
                 
-                // Models 데이터 로드 (선택사항)
-                try {
-                    console.log('📋 Models 로드 중...');
-                    const modelsResponse = await fetch(DATA_URLS.models + '?v=' + Date.now());
-                    
-                    if (modelsResponse.ok) {
-                        modelsData = await modelsResponse.json();
-                        console.log(`✅ Models 로드 성공: ${Object.keys(modelsData).length}개`);
-                    }
-                } catch (modelsError) {
-                    console.warn('⚠️ Models 로드 실패 (계속 진행):', modelsError.message);
+                // 설정 데이터 로드
+                state.config = await this.fetchData(DATA_URLS.config, 'config', true) || this.getDefaultConfig();
+                
+                // 병렬로 모든 데이터 로드
+                const results = await Promise.allSettled([
+                    this.fetchData(DATA_URLS.products, 'products', true).then(data => {
+                        state.products = utils.transformProducts(data || []);
+                    }),
+                    this.fetchData(DATA_URLS.brands, 'brands', true).then(data => {
+                        state.brands = data || {};
+                    }),
+                    this.fetchData(DATA_URLS.models, 'models', true).then(data => {
+                        state.models = data || {};
+                    })
+                ]);
+                
+                const failedLoads = results.filter(result => result.status === 'rejected');
+                if (failedLoads.length > 0) {
+                    console.warn(`⚠️ ${failedLoads.length}개 데이터 로드 실패, 기본값으로 진행`);
                 }
                 
-                // 데이터 정규화
-                appState.products = utils.transformProducts(rawProducts).map(product => ({
-                    ...product,
-                    brand: utils.normalizeBrand(product.brand),
-                    originPrice: product.originPrice || utils.getOriginPrice(product.model)
-                }));
+                state.isDataLoaded = true;
+                console.log('✅ 데이터 로드 완료');
                 
-                console.log('🎉 데이터 로드 완료!');
+                // URL 파라미터 확인
+                const urlParams = utils.getUrlParams();
+                state.activeFilter = urlParams.filter;
+                state.activeSortBy = urlParams.sort;
                 
-                // 필터 적용 및 렌더링
-                filterManager.applyFilters();
+                console.log(`🔍 URL 파라미터 - Filter: ${state.activeFilter}, Sort: ${state.activeSortBy}`);
                 
-                return true;
+                // 로딩 화면 숨기고 메인 화면 표시
+                this.hideLoading();
+                await this.initializeApp();
                 
             } catch (error) {
-                console.error('💥 데이터 로드 실패:', error);
-                ui.showError('데이터 로드에 실패했습니다. 잠시 후 다시 시도해주세요.');
-                return false;
-                
-            } finally {
-                appState.isLoading = false;
+                console.error('❌ Critical data loading failed:', error);
+                this.showError('데이터를 불러오는데 실패했습니다');
             }
-        }
-    };
-    
-    // 🎨 UI 매니저
-    const ui = {
-        elements: {
-            get productList() { return document.getElementById('productList'); },
-            get productCount() { return document.getElementById('productCount'); },
-            get activeFilters() { return document.getElementById('activeFilters'); },
-            get loadMore() { return document.getElementById('loadMore'); },
-            get loadMoreBtn() { return document.getElementById('loadMoreBtn'); }
         },
-        
-        showLoading() {
-            const { productList } = this.elements;
-            if (!productList) return;
-            
-            productList.innerHTML = `
-                <div class="loading-state" style="grid-column: 1 / -1;">
-                    <div class="loading-spinner"></div>
-                    <div class="loading-text">상품 데이터를 불러오는 중...</div>
+
+        getDefaultConfig() {
+            return {
+                site: {
+                    name: "노피",
+                    title: "노피 - 휴대폰 최저가"
+                },
+                urls: {
+                    ai: "https://nofee.team/ai",
+                    products: "https://nofee.team/more"
+                }
+            };
+        },
+
+        async initializeApp() {
+            try {
+                this.renderHeader();
+                this.renderFilterTabs();
+                this.applyCustomFilter();
+                this.renderProducts();
+                this.initializeInteractions();
+                
+                console.log('🎉 더보기 페이지 초기화 완료');
+                
+            } catch (error) {
+                console.error('❌ App initialization failed:', error);
+            }
+        },
+
+        renderHeader() {
+            const headerElement = document.querySelector('.more-header');
+            if (!headerElement) return;
+
+            const filterTitles = {
+                'hot': '🔥 지금 가장 핫한 폰',
+                'save': '💰 월납부금 절약 상품',
+                'guarantee': '🎯 전국 성지가격 보장',
+                'all': '📱 전체 상품'
+            };
+
+            const filterSubtitles = {
+                'hot': '할인율 높은 순으로 정렬된 인기 상품',
+                'save': '월납부금이 저렴한 순으로 정렬',
+                'guarantee': '어디서나 동일한 최저가로 구매 가능',
+                'all': '모든 휴대폰 상품을 한눈에'
+            };
+
+            headerElement.innerHTML = `
+                <div class="header-content">
+                    <h1 class="page-title">${filterTitles[state.activeFilter]}</h1>
+                    <p class="page-subtitle">${filterSubtitles[state.activeFilter]}</p>
+                    <div class="product-count">
+                        총 <span id="productCount">0</span>개 상품
+                    </div>
                 </div>
             `;
         },
-        
-        showError(message) {
-            const { productList } = this.elements;
-            if (!productList) return;
-            
-            productList.innerHTML = `
-                <div class="error-state" style="grid-column: 1 / -1;">
-                    <div class="error-icon">⚠️</div>
-                    <h3 class="error-title">오류가 발생했습니다</h3>
-                    <p class="error-message">${message}</p>
-                    <button class="retry-button" onclick="location.reload()">새로고침</button>
+
+        renderFilterTabs() {
+            const tabsElement = document.querySelector('.filter-tabs');
+            if (!tabsElement) return;
+
+            const tabs = [
+                { id: 'hot', label: '🔥 핫딜', desc: '할인율 높은순' },
+                { id: 'save', label: '💰 절약', desc: '가격 낮은순' },
+                { id: 'guarantee', label: '🎯 보장', desc: '성지가격' },
+                { id: 'all', label: '📱 전체', desc: '모든 상품' }
+            ];
+
+            tabsElement.innerHTML = tabs.map(tab => `
+                <div class="filter-tab ${state.activeFilter === tab.id ? 'active' : ''}" data-filter="${tab.id}">
+                    <div class="tab-label">${tab.label}</div>
+                    <div class="tab-desc">${tab.desc}</div>
                 </div>
-            `;
+            `).join('');
         },
-        
+
+        applyCustomFilter() {
+            let filtered = [...state.products];
+
+            // 커스텀 필터 적용
+            switch (state.activeFilter) {
+                case 'hot':
+                    // 할인율이 있는 상품만 (할인율 높은 순)
+                    filtered = filtered
+                        .filter(product => {
+                            const discount = this.calculateDiscount(product.displayModel, product.principal);
+                            return discount.rate > 0;
+                        })
+                        .sort((a, b) => {
+                            const discountA = this.calculateDiscount(a.displayModel, a.principal).rate;
+                            const discountB = this.calculateDiscount(b.displayModel, b.principal).rate;
+                            return discountB - discountA;
+                        });
+                    break;
+                
+                case 'save':
+                    // 가격 낮은 순
+                    filtered = filtered.sort((a, b) => a.total - b.total);
+                    break;
+                
+                case 'guarantee':
+                    // 모든 상품 (노피는 모든 상품이 성지가격 보장)
+                    break;
+                
+                case 'all':
+                default:
+                    // 할인율 높은 순으로 기본 정렬
+                    filtered = filtered.sort((a, b) => {
+                        const discountA = this.calculateDiscount(a.displayModel, a.principal).rate;
+                        const discountB = this.calculateDiscount(b.displayModel, b.principal).rate;
+                        return discountB - discountA;
+                    });
+                    break;
+            }
+
+            state.filteredProducts = filtered;
+            state.currentPage = 1;
+
+            console.log(`🔍 필터 적용 완료 (${state.activeFilter}): ${filtered.length}개 상품`);
+        },
+
         renderProducts() {
-            const { productList, productCount } = this.elements;
-            if (!productList) return;
+            const productsGrid = document.querySelector('.products-grid');
+            const productCount = document.getElementById('productCount');
             
-            const productsToShow = appState.filteredProducts.slice(0, appState.currentPage * appState.pageSize);
-            
+            if (!productsGrid) return;
+
             // 상품 개수 업데이트
             if (productCount) {
-                productCount.textContent = appState.filteredProducts.length;
+                productCount.textContent = state.filteredProducts.length;
             }
-            
-            // 상품이 없는 경우
-            if (appState.filteredProducts.length === 0) {
-                productList.innerHTML = `
-                    <div class="error-state" style="grid-column: 1 / -1;">
-                        <div class="error-icon">🔍</div>
-                        <h3 class="error-title">검색 결과가 없습니다</h3>
-                        <p class="error-message">다른 조건으로 검색해보세요</p>
+
+            // 표시할 상품 수 계산
+            const productsToShow = state.filteredProducts.slice(0, state.currentPage * state.pageSize);
+
+            if (state.filteredProducts.length === 0) {
+                productsGrid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <h3 class="empty-title">상품이 없습니다</h3>
+                        <p class="empty-message">다른 필터를 선택해보세요</p>
                     </div>
                 `;
                 this.updateLoadMoreButton(false);
                 return;
             }
-            
-            // 상품 카드 생성 (완전한 데이터 속성 추가)
-            productList.innerHTML = productsToShow.map((product, index) => {
-                const brandInfo = utils.getBrandInfo(product.brand);
-                const originPrice = product.originPrice || utils.getOriginPrice(product.model);
-                const { discount, discountRate } = utils.calculateDiscount(originPrice, product.principal);
-                
-                // AI 페이지로 전달할 완전한 데이터 준비
-                const completeData = {
-                    date: product.date || '',
-                    carrier: product.carrier || '',
-                    model_name: product.model_name || '',
-                    contract_type: product.contract_type || '',
-                    device_price_input: product.device_price_input || 0,
-                    subsidy_type: product.subsidy_type || '',
-                    plan_name: product.plan_name || '',
-                    contract_months: product.contract_months || 0,
-                    device_principal: product.device_principal || 0,
-                    plan_monthly_payment: product.plan_monthly_payment || 0,
-                    post_plan_monthly_payment: product.post_plan_monthly_payment || 0,
-                    plan_required_months: product.plan_required_months || 0,
-                    optional_discount_ratio: product.optional_discount_ratio || 0,
-                    device_monthly_payment: product.device_monthly_payment || 0,
-                    plan_effective_monthly_payment: product.plan_effective_monthly_payment || 0,
-                    total_monthly_payment: product.total_monthly_payment || 0,
-                    brand: product.brand || '',
-                    storage: product.storage || '',
-                    originPrice: originPrice.toString() || '0',
-                    principal: product.principal.toString() || '0',
-                    discount: discount.toString() || '0',
-                    discountRate: discountRate.toString() || '0',
-                    from: 'search',
-                    timestamp: Date.now().toString()
-                };
-                
-                // 모든 데이터를 data 속성으로 추가 (안전한 인코딩)
-                const dataAttributes = Object.entries(completeData)
-                    .map(([key, value]) => {
-                        const safeValue = String(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                        return `data-${key}="${safeValue}"`;
-                    })
-                    .join(' ');
+
+            // 상품 카드 생성
+            productsGrid.innerHTML = productsToShow.map((product, index) => {
+                const brandInfo = this.getBrandInfo(product);
+                const discount = this.calculateDiscount(product.displayModel, product.principal);
                 
                 return `
-                    <div class="product-card" 
-                         style="animation-delay: ${index * 0.05}s;"
-                         ${dataAttributes}>
+                    <div class="product-card" data-product='${JSON.stringify(product)}' style="animation-delay: ${(index % 12) * 0.05}s;">
                         <div class="product-header">
-                            <div class="brand-icon ${brandInfo.class}">${brandInfo.icon}</div>
-                            <div class="product-info">
-                                <h3 class="product-title">${product.model}</h3>
-                                <div class="product-meta">
-                                    <span class="meta-tag">${product.carrier}</span>
-                                    <span class="meta-tag">${brandInfo.displayName}</span>
-                                    <span class="meta-tag">${product.type}</span>
-                                    <span class="meta-tag">${product.support}</span>
-                                </div>
-                            </div>
+                            <div class="brand-badge">${product.displayCarrier}</div>
+                            ${discount.rate > 0 ? `<div class="discount-badge">${discount.rate}% 할인</div>` : ''}
                         </div>
-                        
-                        <div class="price-section">
+                        <h3 class="product-title">${utils.sanitizeHTML(product.displayModel)}</h3>
+                        <div class="product-meta">
+                            <span class="meta-info">${product.displayType}</span>
+                            <span class="meta-info">${product.contract_period}개월</span>
+                        </div>
+                        <div class="product-pricing">
                             <div class="price-breakdown">
-                                <div class="price-row">
-                                    <span>기기값</span>
-                                    <span>${utils.formatKRW(originPrice)}</span>
-                                </div>
-                                <div class="price-row">
-                                    <span>할부원금</span>
-                                    <span>${utils.formatKRW(product.installment)}</span>
-                                </div>
-                                <div class="price-row">
-                                    <span>요금제</span>
+                                <div class="price-item">
+                                    <span>통신료</span>
                                     <span>${utils.formatKRW(product.plan)}</span>
                                 </div>
-                                ${discount > 0 ? `
-                                <div class="price-row">
-                                    <span>지원금</span>
-                                    <span style="color: #e74c3c;">-${utils.formatKRW(discount)} (${discountRate}%)</span>
+                                <div class="price-item">
+                                    <span>할부금</span>
+                                    <span>${utils.formatKRW(product.installment)}</span>
                                 </div>
-                                ` : ''}
                             </div>
-                            
-                            <div class="price-total">
-                                <div class="price-label">월 납부금</div>
-                                <div class="price-value">${utils.formatKRW(product.total)}</div>
+                            <div class="total-price">
+                                <div class="total-label">월 납부금</div>
+                                <div class="total-value">${utils.formatKRW(product.total)}</div>
                             </div>
                         </div>
                     </div>
                 `;
             }).join('');
-            
+
             // 더보기 버튼 업데이트
-            const hasMore = productsToShow.length < appState.filteredProducts.length;
+            const hasMore = productsToShow.length < state.filteredProducts.length;
             this.updateLoadMoreButton(hasMore);
-            
-            console.log(`🎴 상품 카드 ${productsToShow.length}개 렌더링 완료 (data 속성 포함)`);
         },
-        
+
         updateLoadMoreButton(hasMore) {
-            const { loadMore, loadMoreBtn } = this.elements;
-            if (!loadMore || !loadMoreBtn) return;
-            
+            const loadMoreSection = document.querySelector('.load-more-section');
+            if (!loadMoreSection) return;
+
             if (hasMore) {
-                loadMore.style.display = 'block';
-                loadMoreBtn.style.display = 'inline-block';
-                loadMoreBtn.disabled = false;
-                loadMoreBtn.textContent = '상품 더 보기';
-            } else {
-                loadMore.style.display = 'none';
-            }
-        },
-        
-        updateActiveFilters() {
-            const { activeFilters } = this.elements;
-            if (!activeFilters) return;
-            
-            const filterTags = [];
-            
-            Object.entries(appState.filters).forEach(([key, value]) => {
-                if (value && key !== 'sort') {
-                    const labels = {
-                        carrier: { 'KT': 'KT', 'LGU': 'LG유플러스', 'SKT': 'SK텔레콤' },
-                        brand: { '삼성': '삼성', '애플': '애플' },
-                        type: { '번호이동': '번호이동', '기기변경': '기기변경', '신규가입': '신규가입' },
-                        support: { '공시지원': '공시지원', '선택약정': '선택약정' }
-                    };
-                    
-                    const label = labels[key]?.[value] || value;
-                    
-                    filterTags.push(`
-                        <div class="filter-tag">
-                            ${label}
-                            <span class="filter-remove" onclick="filterManager.removeFilter('${key}')">&times;</span>
-                        </div>
-                    `);
-                }
-            });
-            
-            activeFilters.innerHTML = filterTags.join('');
-        }
-    };
-    
-    // 🔍 필터 매니저
-    const filterManager = {
-        applyFilters() {
-            let filtered = [...appState.products];
-            
-            // 필터 적용
-            Object.entries(appState.filters).forEach(([key, value]) => {
-                if (value && key !== 'sort') {
-                    filtered = filtered.filter(product => {
-                        return product[key] === value;
+                loadMoreSection.innerHTML = `
+                    <button class="load-more-btn" id="loadMoreBtn">
+                        상품 더 보기
+                        <span class="load-more-arrow">↓</span>
+                    </button>
+                `;
+                
+                const loadMoreBtn = document.getElementById('loadMoreBtn');
+                if (loadMoreBtn) {
+                    loadMoreBtn.addEventListener('click', () => {
+                        state.currentPage++;
+                        this.renderProducts();
                     });
                 }
-            });
+            } else {
+                loadMoreSection.innerHTML = `
+                    <div class="all-loaded">
+                        모든 상품을 확인했습니다 ✨
+                    </div>
+                `;
+            }
+        },
+
+        // 헬퍼 메서드들
+        getBrandInfo(product) {
+            const brand = product.displayModel;
+            if (brand.includes('갤럭시') || brand.includes('Galaxy')) {
+                return { icon: 'S', class: 'samsung', name: '삼성' };
+            }
+            if (brand.includes('아이폰') || brand.includes('iPhone')) {
+                return { icon: 'A', class: 'apple', name: '애플' };
+            }
+            return { icon: '📱', class: 'etc', name: '기타' };
+        },
+
+        calculateDiscount(model, principal) {
+            const originPrice = this.getOriginPrice(model);
+            if (principal >= 0) {
+                return { amount: 0, rate: 0, originPrice };
+            }
             
-            // 정렬 적용
-            if (appState.filters.sort) {
-                filtered.sort((a, b) => {
-                    switch (appState.filters.sort) {
-                        case 'asc':
-                            return a.total - b.total;
-                        case 'desc':
-                            return b.total - a.total;
-                        case 'discount':
-                            const discountA = utils.calculateDiscount(a.originPrice, a.principal).discountRate;
-                            const discountB = utils.calculateDiscount(b.originPrice, b.principal).discountRate;
-                            return discountB - discountA;
-                        default:
-                            return 0;
+            const discountAmount = Math.abs(principal);
+            const discountRate = Math.round((discountAmount / originPrice) * 100);
+            return { amount: discountAmount, rate: discountRate, originPrice };
+        },
+
+        getOriginPrice(model) {
+            if (state.models[model]) {
+                return state.models[model].originPrice;
+            }
+            
+            for (const [key, value] of Object.entries(state.models)) {
+                if (model.includes(key) || key.includes(model)) {
+                    return value.originPrice;
+                }
+            }
+            
+            return 1000000; // 기본값
+        },
+
+        initializeInteractions() {
+            // 필터 탭 클릭 이벤트
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const newFilter = tab.dataset.filter;
+                    if (newFilter !== state.activeFilter) {
+                        // URL 업데이트
+                        const url = new URL(window.location);
+                        url.searchParams.set('filter', newFilter);
+                        window.history.pushState({}, '', url);
+                        
+                        // 상태 업데이트 및 리렌더링
+                        state.activeFilter = newFilter;
+                        this.renderHeader();
+                        this.renderFilterTabs();
+                        this.applyCustomFilter();
+                        this.renderProducts();
                     }
                 });
+            });
+
+            // 상품 카드 클릭 이벤트
+            document.addEventListener('click', (e) => {
+                const productCard = e.target.closest('.product-card');
+                if (productCard) {
+                    try {
+                        const product = JSON.parse(productCard.dataset.product);
+                        this.handleProductClick(product);
+                    } catch (error) {
+                        console.error('Product click error:', error);
+                    }
+                }
+            });
+        },
+
+        handleProductClick(product) {
+            // AI 상담 페이지로 이동 (모든 데이터 전달)
+            const aiUrl = state.config?.urls?.ai || 'https://nofee.team/ai';
+            const params = new URLSearchParams();
+            
+            // 원본 상품 데이터의 모든 필드를 전달
+            Object.keys(product).forEach(key => {
+                if (product[key] !== null && product[key] !== undefined) {
+                    params.append(key, product[key]);
+                }
+            });
+            
+            window.open(`${aiUrl}?${params.toString()}`, '_blank');
+        },
+
+        hideLoading() {
+            const loadingElement = document.querySelector('.loading-screen');
+            if (loadingElement) {
+                loadingElement.style.display = 'none';
             }
-            
-            appState.filteredProducts = filtered;
-            appState.currentPage = 1;
-            
-            ui.renderProducts();
-            ui.updateActiveFilters();
-            
-            console.log(`🔍 필터 적용 완료: ${filtered.length}개 상품`);
         },
-        
-        setFilter(category, value) {
-            appState.filters[category] = value;
-            this.applyFilters();
-            
-            console.log(`🔍 필터 설정: ${category} = ${value || '전체'}`);
-        },
-        
-        removeFilter(category) {
-            appState.filters[category] = '';
-            
-            // 해당 Select 요소 초기화
-            const selectElement = document.querySelector(`[data-category="${category}"]`);
-            if (selectElement) {
-                selectElement.value = '';
+
+        showError(message) {
+            this.hideLoading();
+            const errorElement = document.querySelector('.error-screen');
+            if (errorElement) {
+                errorElement.querySelector('.error-message').textContent = message;
+                errorElement.style.display = 'flex';
             }
-            
-            this.applyFilters();
-            
-            console.log(`🗑️ 필터 제거: ${category}`);
-        },
-        
-        loadMore() {
-            appState.currentPage++;
-            ui.renderProducts();
-            
-            console.log(`📄 페이지 로드: ${appState.currentPage}`);
         }
     };
-    
-    // 🎯 이벤트 핸들러
-    const eventHandlers = {
-        init() {
-            // 더보기 버튼
-            const loadMoreBtn = document.getElementById('loadMoreBtn');
-            if (loadMoreBtn) {
-                loadMoreBtn.addEventListener('click', () => {
-                    filterManager.loadMore();
-                });
-            }
-            
-            console.log('🎮 이벤트 핸들러 초기화 완료');
-        }
-    };
-    
+
     // 🚀 메인 초기화 함수
-    async function initProductSearch() {
+    async function initNofeeMore() {
         try {
-            console.log('🚀 상품 검색 초기화 시작...');
+            console.log('🚀 노피 더보기 페이지 v4.0 초기화 시작');
             
-            // 이벤트 핸들러 초기화
-            eventHandlers.init();
+            await dataLoader.loadAllData();
             
-            // 데이터 로드
-            const success = await dataLoader.loadData();
+            // 전역 상태 노출
+            window.nofeeMoreState = state;
             
-            if (success) {
-                console.log('✅ 상품 검색 초기화 완료!');
-            } else {
-                console.error('❌ 상품 검색 초기화 실패');
-            }
-            
-            return success;
+            console.log('✅ 노피 더보기 페이지 v4.0 초기화 완료');
             
         } catch (error) {
-            console.error('💥 초기화 중 오류 발생:', error);
-            ui.showError('초기화 중 오류가 발생했습니다.');
-            return false;
+            console.error('❌ Critical initialization failure:', error);
+            dataLoader.showError('시스템 초기화에 실패했습니다');
         }
     }
-    
-    // 🌍 전역 함수 및 객체 노출
-    window.initProductSearch = initProductSearch;
-    window.filterManager = filterManager;
-    window.appState = appState;
-    
-    // 🎯 외부에서 호출할 수 있는 필터 함수 (HTML의 Select에서 사용)
-    window.applyFilter = function(category, value) {
-        filterManager.setFilter(category, value);
-    };
-    
-    console.log('✅ more.js v3.2 모듈 로드 완료 - 완전한 상품 데이터 전달 기능');
-    
-})();
 
-// 🔄 즉시 실행 (백업)
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-        if (window.initProductSearch) {
-            window.initProductSearch();
-        }
-    });
-} else {
-    setTimeout(() => {
-        if (window.initProductSearch) {
-            window.initProductSearch();
-        }
-    }, 100);
-}
+    // 🎯 DOM 준비 확인 및 초기화
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initNofeeMore);
+    } else {
+        setTimeout(initNofeeMore, 0);
+    }
+
+})();
