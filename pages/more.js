@@ -37,39 +37,47 @@
         searchTimer: null
     };
     
-    // ⚡ URL 설정 - 한 곳에서만 정의
-    // 옵션 1: 현재 웹사이트 기준 (권장 - CORS 문제 없음)
-    const PRODUCTS_DATA_URL = '/data/products.json';
-    const MODELS_DATA_URL = '/data/models.json';
-
-    // 옵션 2: GitHub Raw URLs (백업용)
-    const BACKUP_PRODUCTS_URL = 'https://raw.githubusercontent.com/jacob-po/nofee-webflow/main/data/products.json';
-    const BACKUP_MODELS_URL = 'https://raw.githubusercontent.com/jacob-po/nofee-webflow/main/data/models.json';
-
-    // 옵션 3: 다른 가능한 GitHub Raw URLs
-    const ALTERNATIVE_PRODUCTS_URL = 'https://raw.githubusercontent.com/jacob-po/products-data/main/products.json';
-    const ALTERNATIVE_MODELS_URL = 'https://raw.githubusercontent.com/jacob-po/products-data/main/models.json';
+    // ⚡ URL 설정 - 중복 제거하고 한 곳에서만 정의
+    // 즉시 작동 가능한 URL들을 순서대로 시도
+    const URL_SETS = {
+        primary: {
+            name: 'Same Domain',
+            products: '/data/products.json',
+            models: '/data/models.json'
+        },
+        backup: {
+            name: 'GitHub nofee-webflow',
+            products: 'https://raw.githubusercontent.com/jacob-po/nofee-webflow/main/data/products.json',
+            models: 'https://raw.githubusercontent.com/jacob-po/nofee-webflow/main/data/models.json'
+        },
+        alternative: {
+            name: 'GitHub products-data',
+            products: 'https://raw.githubusercontent.com/jacob-po/products-data/main/products.json',
+            models: 'https://raw.githubusercontent.com/jacob-po/products-data/main/models.json'
+        }
+    };
 
     let modelsData = {};
 
-    // URL 접근성 테스트 함수
+    // URL 테스트 함수
     const testAllUrls = async () => {
-        const urlsToTest = [
-            { name: 'Primary Products', url: PRODUCTS_DATA_URL },
-            { name: 'Primary Models', url: MODELS_DATA_URL },
-            { name: 'Backup Products', url: BACKUP_PRODUCTS_URL },
-            { name: 'Backup Models', url: BACKUP_MODELS_URL },
-            { name: 'Alternative Products', url: ALTERNATIVE_PRODUCTS_URL },
-            { name: 'Alternative Models', url: ALTERNATIVE_MODELS_URL }
-        ];
-
         console.log('🧪 모든 URL 접근성 테스트:');
-        for (const item of urlsToTest) {
+
+        for (const [key, urlSet] of Object.entries(URL_SETS)) {
+            console.log(`\n📁 ${urlSet.name} 테스트:`);
+
             try {
-                const response = await fetch(item.url, { method: 'HEAD' });
-                console.log(`✅ ${item.name}: ${response.status} ${response.statusText}`);
+                const productsResponse = await fetch(urlSet.products, { method: 'HEAD' });
+                console.log(`  Products: ${productsResponse.status} ${productsResponse.statusText}`);
             } catch (error) {
-                console.log(`❌ ${item.name}: ${error.message}`);
+                console.log(`  Products: ❌ ${error.message}`);
+            }
+
+            try {
+                const modelsResponse = await fetch(urlSet.models, { method: 'HEAD' });
+                console.log(`  Models: ${modelsResponse.status} ${modelsResponse.statusText}`);
+            } catch (error) {
+                console.log(`  Models: ❌ ${error.message}`);
             }
         }
     };
@@ -522,23 +530,7 @@
                 console.log('🔍 데이터 로딩 시작...');
 
                 // 순차적으로 URL 시도
-                const urlSets = [
-                    {
-                        name: 'Primary (Same Domain)',
-                        products: PRODUCTS_DATA_URL,
-                        models: MODELS_DATA_URL
-                    },
-                    {
-                        name: 'Backup (GitHub nofee-webflow)',
-                        products: BACKUP_PRODUCTS_URL,
-                        models: BACKUP_MODELS_URL
-                    },
-                    {
-                        name: 'Alternative (GitHub products-data)',
-                        products: ALTERNATIVE_PRODUCTS_URL,
-                        models: ALTERNATIVE_MODELS_URL
-                    }
-                ];
+                const urlSets = Object.values(URL_SETS);
 
                 let productData = null;
                 let modelData = {};
