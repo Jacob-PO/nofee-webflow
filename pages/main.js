@@ -95,16 +95,22 @@
             const carrierMap = { SK: 'SKT', KT: 'KT', LG: 'LGU+' };
             const typeMap = { '이동': '번호이동', '기변': '기기변경' };
 
-            const t = { ...item };
-            t.carrier = carrierMap[item.carrier] || item.carrier;
-            t.type = typeMap[item.contract_type] || item.contract_type;
-            t.model = modelMap[item.model_name] || item.model_name;
-            t.principal = item.device_principal || 0;
-            t.plan = item.plan_effective_monthly_payment || 0;
-            t.installment = item.device_monthly_payment || 0;
-            t.total = item.total_monthly_payment || 0;
-            t.contract_period = item.contract_months || 24;
-            return t;
+            // 원본 데이터 보존하면서 변환된 데이터 추가
+            const transformed = { 
+                ...item, // 원본 데이터 모두 보존
+                // UI 표시용 변환된 데이터 추가
+                displayCarrier: carrierMap[item.carrier] || item.carrier,
+                displayType: typeMap[item.contract_type] || item.contract_type,
+                displayModel: modelMap[item.model_name] || item.model_name,
+                // 계산된 필드들
+                principal: item.device_principal || 0,
+                plan: item.plan_effective_monthly_payment || 0,
+                installment: item.device_monthly_payment || 0,
+                total: item.total_monthly_payment || 0,
+                contract_period: item.contract_months || 24
+            };
+
+            return transformed;
         },
 
         transformProducts: (data) => {
@@ -248,9 +254,12 @@
             heroElement.innerHTML = `
                 <div class="hero-content">
                     <h1 class="hero-title">
-                        <span class="hero-greeting">휴대폰 최저가</span>
-                        <span class="hero-name">노피에서 찾아보세요</span>
+                        <span class="hero-greeting">전국 어디서나 성지 가격</span>
+                        <span class="hero-name">균일가 최저가 보장</span>
                     </h1>
+                    <div class="hero-subtitle">
+                        모든 매장에서 동일한 최저가로 구매 가능합니다
+                    </div>
                     <div class="hero-stats">
                         <div class="stat-item">
                             <div class="stat-value">${stats.totalProducts}개</div>
@@ -283,6 +292,14 @@
                         </div>
                         <div class="action-arrow">→</div>
                     </div>
+                    <div class="action-card" data-action="products">
+                        <div class="action-icon">📱</div>
+                        <div class="action-content">
+                            <div class="action-title">전체 상품</div>
+                            <div class="action-subtitle">모든 상품 보기</div>
+                        </div>
+                        <div class="action-arrow">→</div>
+                    </div>
                     <div class="action-card" data-action="compare">
                         <div class="action-icon">📊</div>
                         <div class="action-content">
@@ -291,19 +308,11 @@
                         </div>
                         <div class="action-arrow">→</div>
                     </div>
-                    <div class="action-card" data-action="search">
-                        <div class="action-icon">🔍</div>
+                    <div class="action-card" data-action="uniform">
+                        <div class="action-icon">🎯</div>
                         <div class="action-content">
-                            <div class="action-title">상품 검색</div>
-                            <div class="action-subtitle">원하는 기종 찾기</div>
-                        </div>
-                        <div class="action-arrow">→</div>
-                    </div>
-                    <div class="action-card" data-action="store">
-                        <div class="action-icon">📍</div>
-                        <div class="action-content">
-                            <div class="action-title">매장 찾기</div>
-                            <div class="action-subtitle">근처 매장 위치</div>
+                            <div class="action-title">균일가 시스템</div>
+                            <div class="action-subtitle">전국 동일 최저가</div>
                         </div>
                         <div class="action-arrow">→</div>
                     </div>
@@ -318,16 +327,16 @@
             const bestProducts = this.getBestProducts();
             
             const dealsHTML = bestProducts.map(product => {
-                const discount = this.calculateDiscount(product.model, product.principal);
+                const discount = this.calculateDiscount(product.displayModel, product.principal);
                 
                 return `
                     <div class="deal-card" data-product='${JSON.stringify(product)}'>
                         <div class="deal-header">
-                            <div class="deal-badge">${product.carrier}</div>
+                            <div class="deal-badge">${product.displayCarrier}</div>
                             ${discount.rate > 0 ? `<div class="discount-badge">${discount.rate}% 할인</div>` : ''}
                         </div>
-                        <h3 class="deal-title">${utils.sanitizeHTML(product.model)}</h3>
-                        <div class="deal-type">${product.type} · ${product.contract_period}개월</div>
+                        <h3 class="deal-title">${utils.sanitizeHTML(product.displayModel)}</h3>
+                        <div class="deal-type">${product.displayType} · ${product.contract_period}개월</div>
                         <div class="deal-price">
                             <div class="monthly-payment">월 ${utils.formatKRW(product.total)}</div>
                             <div class="price-breakdown">
@@ -395,8 +404,8 @@
             const productsHTML = recentProducts.map(product => `
                 <div class="recent-card" data-product='${JSON.stringify(product)}'>
                     <div class="recent-info">
-                        <h4 class="recent-title">${utils.sanitizeHTML(product.model)}</h4>
-                        <div class="recent-carrier">${product.carrier} · ${product.type}</div>
+                        <h4 class="recent-title">${utils.sanitizeHTML(product.displayModel)}</h4>
+                        <div class="recent-carrier">${product.displayCarrier} · ${product.displayType}</div>
                         <div class="recent-price">월 ${utils.formatKRW(product.total)}</div>
                     </div>
                     <div class="recent-arrow">→</div>
@@ -455,7 +464,7 @@
             let totalSum = 0;
 
             state.products.forEach(product => {
-                const discount = this.calculateDiscount(product.model, product.principal);
+                const discount = this.calculateDiscount(product.displayModel, product.principal);
                 if (discount.rate > maxDiscountRate) {
                     maxDiscountRate = discount.rate;
                 }
@@ -497,7 +506,7 @@
         getBestProducts() {
             return state.products
                 .map(product => {
-                    const discount = this.calculateDiscount(product.model, product.principal);
+                    const discount = this.calculateDiscount(product.displayModel, product.principal);
                     return { ...product, discountRate: discount.rate };
                 })
                 .sort((a, b) => b.discountRate - a.discountRate)
@@ -556,26 +565,25 @@
         },
 
         handleAction(action) {
-            const baseUrl = state.config?.urls?.ai || 'https://nofee.team/ai';
+            const aiUrl = state.config?.urls?.ai || 'https://nofee.team/ai';
             const productsUrl = state.config?.urls?.products || 'https://nofee.team/more';
 
             switch (action) {
                 case 'ai':
-                    window.open(baseUrl, '_blank');
+                    window.open(aiUrl, '_blank');
                     break;
+                case 'products':
                 case 'compare':
                 case 'search':
                 case 'seeAll':
                 case 'seeAllRecent':
+                case 'uniform':
                     window.open(productsUrl, '_blank');
-                    break;
-                case 'store':
-                    window.open('https://nofee.team/store', '_blank');
                     break;
                 case 'recent':
                 case 'favorites':
                 case 'consultation':
-                    window.open(baseUrl, '_blank');
+                    window.open(aiUrl, '_blank');
                     break;
                 default:
                     console.log('Unhandled action:', action);
@@ -586,29 +594,37 @@
             // 최근 본 상품에 추가
             this.addToRecentProducts(product);
             
-            // AI 상담 페이지로 이동
-            const baseUrl = state.config?.urls?.ai || 'https://nofee.team/ai';
-            const params = new URLSearchParams({
-                model: product.model,
-                carrier: product.carrier,
-                type: product.type
+            // 상품의 모든 JSON 데이터를 URL 파라미터로 전달
+            const aiUrl = state.config?.urls?.ai || 'https://nofee.team/ai';
+            const params = new URLSearchParams();
+            
+            // 원본 상품 데이터의 모든 필드를 전달
+            Object.keys(product).forEach(key => {
+                if (product[key] !== null && product[key] !== undefined) {
+                    params.append(key, product[key]);
+                }
             });
             
-            window.open(`${baseUrl}?${params.toString()}`, '_blank');
+            window.open(`${aiUrl}?${params.toString()}`, '_blank');
         },
 
         addToRecentProducts(product) {
             try {
                 let recent = JSON.parse(localStorage.getItem('nofee_recent_products') || '[]');
                 
-                // 중복 제거
-                recent = recent.filter(item => item.model !== product.model || item.carrier !== product.carrier);
+                // 중복 제거 (원본 model_name과 carrier로 비교)
+                recent = recent.filter(item => 
+                    item.model_name !== product.model_name || item.carrier !== product.carrier
+                );
                 
-                // 맨 앞에 추가
+                // 맨 앞에 추가 (원본 데이터 + 표시용 데이터)
                 recent.unshift({
-                    model: product.model,
+                    model_name: product.model_name,
                     carrier: product.carrier,
-                    type: product.type,
+                    contract_type: product.contract_type,
+                    displayModel: product.displayModel,
+                    displayCarrier: product.displayCarrier,
+                    displayType: product.displayType,
                     total: product.total,
                     timestamp: Date.now()
                 });
