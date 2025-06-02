@@ -346,7 +346,9 @@
         handleRemoveClick: (viewedId) => {
             const card = document.querySelector(`[data-viewed-id="${viewedId}"]`);
             if (card) {
-                card.style.animation = 'fadeOutScale 0.3s ease forwards';
+                card.style.transition = 'all 0.3s ease';
+                card.style.transform = 'scale(0.9)';
+                card.style.opacity = '0';
                 setTimeout(() => {
                     dataManager.removeProduct(viewedId);
                 }, 300);
