@@ -29,9 +29,14 @@
     };
     
     // ⚡ URL 설정 - 한 곳에서만 정의
-    // 옵션 1: 현재 웹사이트 기준 (권장 - CORS 문제 없음)
-    const PRODUCTS_DATA_URL = '/data/products.json';
-    const MODELS_DATA_URL = '/data/models.json';
+    // 스크립트 위치를 기준으로 루트 경로 계산
+    const scriptUrl = new URL(document.currentScript.src);
+    const basePath = scriptUrl.pathname.split('/').slice(0, -2).join('/');
+    const GITHUB_BASE_URL = scriptUrl.origin + basePath;
+
+    // 기본 데이터 URL (같은 저장소 기준)
+    const PRODUCTS_DATA_URL = `${GITHUB_BASE_URL}/data/products.json`;
+    const MODELS_DATA_URL = `${GITHUB_BASE_URL}/data/models.json`;
     
     // 옵션 2: GitHub Raw URLs (백업용)
     const BACKUP_PRODUCTS_URL = 'https://raw.githubusercontent.com/jacob-po/nofee-webflow/main/data/products.json';
@@ -328,6 +333,46 @@
             }
         }
     };
+
+    // --- 최소 초기화 로직 ---
+    async function initProductSearch() {
+        try {
+            const response = await fetch(PRODUCTS_DATA_URL);
+            if (!response.ok) throw new Error(response.statusText);
+            const products = await response.json();
+
+            const list = document.getElementById('productList');
+            const countEl = document.getElementById('productCount');
+            if (list) {
+                list.innerHTML = '';
+                products.forEach(p => {
+                    const card = document.createElement('div');
+                    card.className = 'product-card';
+                    card.innerHTML = `
+                        <div class="card-model">${p.model}</div>
+                        <div class="card-total">월 ${Number(p.total).toLocaleString('ko-KR')}원</div>
+                    `;
+                    list.appendChild(card);
+                });
+            }
+            if (countEl) countEl.textContent = products.length;
+            console.log('✅ initProductSearch 완료');
+        } catch (err) {
+            console.error('initProductSearch 실패:', err);
+            const list = document.getElementById('productList');
+            if (list) {
+                list.innerHTML = '<div class="error-state">데이터 로드 실패</div>';
+            }
+        }
+    }
+
+    window.initProductSearch = initProductSearch;
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initProductSearch);
+    } else {
+        initProductSearch();
+    }
 
     // 나머지 UI, 필터 관리, 이벤트 핸들러 코드는 동일...
     // (중략 - 기존 코드 유지)
