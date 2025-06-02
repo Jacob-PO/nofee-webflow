@@ -30,11 +30,10 @@
     };
     
     // GitHub 저장소 설정
-    // const PRODUCTS_DATA_URL = 'https://jacob-po.github.io/products-data/products.json';
-    const basePath = window.location.pathname.startsWith('/nofee-webflow') ? '/nofee-webflow' : '';
-    const GITHUB_BASE_URL = window.location.origin + basePath;
-    const PRODUCTS_DATA_URL = `${GITHUB_BASE_URL}/data/products.json`;
-    const MODELS_DATA_URL = `${GITHUB_BASE_URL}/data/models.json`;
+    const PRODUCTS_DATA_URL = 'https://jacob-po.github.io/nofee-webflow/data/products.json';
+    const MODELS_DATA_URL = 'https://jacob-po.github.io/nofee-webflow/data/models.json';
+    // 백업 데이터 URL
+    const BACKUP_PRODUCTS_URL = 'https://raw.githubusercontent.com/jacob-po/nofee-webflow/main/data/products.json';
 
     let modelsData = {};
     
@@ -480,13 +479,33 @@
                 state.isLoading = true;
                 ui.renderLoading();
 
+                console.log('데이터 URL:', PRODUCTS_DATA_URL);
+
                 const [productsRes, modelsRes] = await Promise.all([
                     fetch(PRODUCTS_DATA_URL),
                     fetch(MODELS_DATA_URL).catch(() => null)
                 ]);
 
+                console.log('Products response status:', productsRes.status);
+                console.log('Products response ok:', productsRes.ok);
+
                 if (!productsRes.ok) {
-                    throw new Error(`HTTP error! status: ${productsRes.status}`);
+                    console.log('메인 URL 실패, 백업 URL 시도...');
+                    const backupRes = await fetch(BACKUP_PRODUCTS_URL);
+                    if (backupRes.ok) {
+                        const data = await backupRes.json();
+                        state.products = data;
+                        if (modelsRes && modelsRes.ok) {
+                            modelsData = await modelsRes.json();
+                        }
+
+                        console.log(`상품 데이터 로드 완료: ${data.length}개 (백업)`);
+
+                        urlManager.loadFiltersFromURL();
+                        ui.renderProducts();
+                        return true;
+                    }
+                    throw new Error(`HTTP error! status: ${productsRes.status}, url: ${PRODUCTS_DATA_URL}`);
                 }
 
                 if (modelsRes && modelsRes.ok) {
@@ -507,8 +526,12 @@
                 return true;
                 
             } catch (error) {
-                console.error('데이터 로드 실패:', error);
-                ui.renderError();
+                console.error('상세 에러 정보:', {
+                    message: error.message,
+                    stack: error.stack,
+                    url: PRODUCTS_DATA_URL
+                });
+                ui.renderError(`데이터 로드 실패: ${error.message}`);
                 return false;
             } finally {
                 state.isLoading = false;
