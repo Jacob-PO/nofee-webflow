@@ -583,11 +583,20 @@
                     window.open(aiUrl, '_blank');
                     break;
                 case 'products':
+                    // 지금 가장 핫한 폰 - 할인율 높은 순
+                    window.open(productsUrl + '?filter=hot&sort=discount', '_blank');
+                    break;
                 case 'compare':
-                case 'search':
+                    // 월 X만원 아끼기 - 가격 낮은 순
+                    window.open(productsUrl + '?filter=save&sort=asc', '_blank');
+                    break;
+                case 'uniform':
+                    // 전국 성지가격 보장 - 전체 상품
+                    window.open(productsUrl + '?filter=guarantee', '_blank');
+                    break;
                 case 'seeAll':
                 case 'seeAllRecent':
-                case 'uniform':
+                    // 전체 상품
                     window.open(productsUrl, '_blank');
                     break;
                 case 'recent':
