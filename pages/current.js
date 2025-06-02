@@ -86,6 +86,51 @@
                 console.error('로컬스토리지 쓰기 오류:', error);
                 return false;
             }
+        },
+
+        transformProducts: (data) => {
+            const modelMap = {
+                'S25-256': '갤럭시 S25 256GB',
+                'S25플러스-256': '갤럭시 S25 플러스 256GB',
+                'S25울트라-256': '갤럭시 S25 울트라 256GB',
+                'S24FE': '갤럭시 S24 FE',
+                '플립6-256': '갤럭시 Z 플립6 256GB',
+                '플립5-256': '갤럭시 Z 플립5 256GB',
+                '폴드6-256': '갤럭시 Z 폴드6 256GB',
+                '와이드7': '갤럭시 와이드7',
+                'A16': '갤럭시 A16',
+                '아이폰16-128': '아이폰 16 128GB',
+                '아이폰16-256': '아이폰 16 256GB',
+                '아이폰16프로-128': '아이폰 16 Pro 128GB',
+                '아이폰16프로-256': '아이폰 16 Pro 256GB',
+                '아이폰16프로맥스-256': '아이폰 16 Pro Max 256GB',
+                '아이폰15-128': '아이폰 15 128GB',
+                '아이폰15프로-128': '아이폰 15 Pro 128GB',
+                '시나모롤 키즈폰': '시나모롤 키즈폰',
+                '키즈폰 무너': '키즈폰 무너'
+            };
+            const carrierMap = { SK: 'SKT', KT: 'KT', LG: 'LGU' };
+            const typeMap = { '이동': '번호이동', '기변': '기기변경' };
+            const supportMap = { '공시': '공시지원', '선약': '선택약정' };
+
+            if (!Array.isArray(data)) return [];
+
+            return data.map(item => ({
+                date: item.date,
+                carrier: carrierMap[item.carrier] || item.carrier,
+                brand: item.brand || '',
+                type: typeMap[item.contract_type] || item.contract_type,
+                support: supportMap[item.subsidy_type] || item.subsidy_type,
+                model: modelMap[item.model_name] || item.model_name,
+                principal: item.device_principal || 0,
+                plan_name: item.plan_monthly_payment || 0,
+                change_plan: item.post_plan_monthly_payment || 0,
+                contract_period: item.contract_months || 0,
+                plan_period: item.plan_required_months || 0,
+                plan: item.plan_effective_monthly_payment || 0,
+                installment: item.device_monthly_payment || 0,
+                total: item.total_monthly_payment || 0
+            }));
         }
     };
     
@@ -537,7 +582,8 @@
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
-            state.allProducts = await response.json();
+            const rawProducts = await response.json();
+            state.allProducts = utils.transformProducts(rawProducts);
             console.log(`전체 상품 데이터 로드 완료: ${state.allProducts.length}개`);
             
             // 상품 매칭
