@@ -1,4 +1,4 @@
-// 🚀 노피 메인페이지 스크립트 v4.0 - 창의적 기능 강화
+// 🚀 노피 메인페이지 스크립트 v3.2 - 창의적 기능 중심
 (function() {
     'use strict';
     
@@ -10,19 +10,11 @@
         banners: [],
         brands: {},
         models: {},
-        selectedRegion: null,
+        selectedPlanType: 'all',
         currentBannerIndex: 0,
         bannerInterval: null,
-        hotDealsInterval: null,
         isDataLoaded: false,
-        loadingErrors: [],
-        currentHotDealIndex: 0,
-        analytics: {
-            totalProducts: 0,
-            avgDiscount: 0,
-            maxSavings: 0,
-            topBrands: []
-        }
+        loadingErrors: []
     };
 
     // GitHub 저장소 설정
@@ -46,20 +38,16 @@
             return Math.abs(Number(value)).toLocaleString("ko-KR") + "원";
         },
 
-        formatNumber: (value) => {
-            return Math.abs(Number(value)).toLocaleString("ko-KR");
-        },
-
-        debounce: (func, wait) => {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
+        formatDate: (dateString) => {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 1) return '오늘';
+            if (diffDays === 2) return '어제';
+            if (diffDays <= 7) return `${diffDays}일 전`;
+            return date.toLocaleDateString('ko-KR');
         },
 
         sanitizeHTML: (str) => {
@@ -100,46 +88,6 @@
                 section.style.display = 'none';
                 section.classList.remove('visible');
             }
-        },
-
-        // 텍스트에서 키워드 추출
-        extractKeywords: (text) => {
-            const stopWords = ['이', '가', '을', '를', '의', '에', '와', '과', '도', '는', '은', '이다', '있다', '없다', '하다', '되다', '그리고', '하지만', '그런데', '그래서'];
-            const words = text.replace(/[^\w\s가-힣]/g, '').split(/\s+/)
-                .filter(word => word.length > 1 && !stopWords.includes(word))
-                .map(word => word.toLowerCase());
-            
-            const frequency = {};
-            words.forEach(word => {
-                frequency[word] = (frequency[word] || 0) + 1;
-            });
-            
-            return Object.entries(frequency)
-                .sort(([,a], [,b]) => b - a)
-                .slice(0, 10)
-                .map(([word]) => word);
-        },
-
-        // 감정 분석 (간단한 키워드 기반)
-        analyzeSentiment: (text) => {
-            const positiveWords = ['좋다', '만족', '빠르다', '친절', '저렴', '추천', '최고', '완벽', '훌륭', '감사'];
-            const negativeWords = ['나쁘다', '불만', '느리다', '불친절', '비싸다', '실망', '최악', '문제', '고장', '후회'];
-            
-            const lowerText = text.toLowerCase();
-            let positiveScore = 0;
-            let negativeScore = 0;
-            
-            positiveWords.forEach(word => {
-                if (lowerText.includes(word)) positiveScore++;
-            });
-            
-            negativeWords.forEach(word => {
-                if (lowerText.includes(word)) negativeScore++;
-            });
-            
-            if (positiveScore > negativeScore) return 'positive';
-            if (negativeScore > positiveScore) return 'negative';
-            return 'neutral';
         }
     };
 
@@ -200,9 +148,6 @@
                     this.fetchData(DATA_URLS.reviews, 'reviews', true).then(data => state.reviews = data || [])
                 ]);
                 
-                // 데이터 분석 수행
-                this.performDataAnalysis();
-                
                 // 로딩 결과 확인
                 const allResults = [...coreDataResults, ...contentDataResults];
                 const failedLoads = allResults.filter(result => result.status === 'rejected');
@@ -224,55 +169,6 @@
                 console.error('❌ Critical data loading failed:', error);
                 this.showError('데이터를 불러오는데 실패했습니다');
             }
-        },
-
-        performDataAnalysis() {
-            if (state.products.length === 0) return;
-            
-            console.log('📊 데이터 분석 시작...');
-            
-            // 기본 통계 계산
-            state.analytics.totalProducts = state.products.length;
-            
-            // 할인율 계산
-            const discounts = state.products.map(product => {
-                const { discountRate } = this.calculateDiscount(product.model, product.principal);
-                return discountRate;
-            }).filter(rate => rate > 0);
-            
-            state.analytics.avgDiscount = discounts.length > 0 ? 
-                Math.round(discounts.reduce((sum, rate) => sum + rate, 0) / discounts.length) : 0;
-            
-            // 최대 절약 금액 계산
-            const savings = state.products.map(product => {
-                const { discount } = this.calculateDiscount(product.model, product.principal);
-                return discount;
-            });
-            
-            state.analytics.maxSavings = savings.length > 0 ? Math.max(...savings) : 0;
-            
-            // 브랜드별 통계
-            const brandStats = {};
-            state.products.forEach(product => {
-                const brand = product.brand;
-                if (!brandStats[brand]) {
-                    brandStats[brand] = { count: 0, totalDiscount: 0 };
-                }
-                brandStats[brand].count++;
-                const { discountRate } = this.calculateDiscount(product.model, product.principal);
-                brandStats[brand].totalDiscount += discountRate;
-            });
-            
-            state.analytics.topBrands = Object.entries(brandStats)
-                .map(([brand, stats]) => ({
-                    brand,
-                    count: stats.count,
-                    avgDiscount: Math.round(stats.totalDiscount / stats.count)
-                }))
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 3);
-            
-            console.log('📊 분석 완료:', state.analytics);
         },
 
         getDefaultConfig() {
@@ -307,8 +203,7 @@
                 urls: {
                     ai: "https://nofee.team/ai",
                     products: "https://nofee.team/more",
-                    product: "https://nofee.team/ai",
-                    brand: "https://nofee.team/more"
+                    product: "https://nofee.team/ai"
                 }
             };
         },
@@ -318,12 +213,10 @@
             
             const config = state.config;
             
-            // 사이트 제목 업데이트
             if (config.site?.title) {
                 document.title = config.site.title;
             }
             
-            // CSS 변수 업데이트 (테마 색상)
             if (config.theme) {
                 const root = document.documentElement;
                 Object.entries(config.theme).forEach(([key, value]) => {
@@ -334,12 +227,12 @@
 
         async initializeAllSections() {
             try {
-                // 순차적으로 섹션 초기화 (에러가 발생해도 다음 섹션 계속)
+                // 순차적으로 섹션 초기화
                 await this.safeInit('Hero', () => this.initHeroSection());
                 await this.safeInit('Banner', () => this.initBannerSection());
-                await this.safeInit('HotDeals', () => this.initHotDealsSection());
-                await this.safeInit('Analytics', () => this.initAnalyticsSection());
                 await this.safeInit('AI', () => this.initAISection());
+                await this.safeInit('Stats', () => this.initStatsSection());
+                await this.safeInit('PlanComparison', () => this.initPlanComparisonSection());
                 await this.safeInit('Products', () => this.initProductsSection());
                 await this.safeInit('Reviews', () => this.initReviewsSection());
                 
@@ -351,7 +244,6 @@
                 
             } catch (error) {
                 console.error('❌ Section initialization failed:', error);
-                // 에러가 발생해도 계속 진행
             }
         },
 
@@ -361,7 +253,6 @@
                 console.log(`✅ ${sectionName} section initialized`);
             } catch (error) {
                 console.error(`❌ ${sectionName} section failed:`, error);
-                // 에러가 발생해도 다른 섹션은 계속 초기화
             }
         },
 
@@ -370,11 +261,9 @@
             
             const { hero } = state.config;
             
-            // Hero 텍스트 업데이트
             utils.setElementContent('#heroTitle', hero.title, true);
             utils.setElementContent('#heroSubtitle', hero.subtitle);
             
-            // Hero features 생성
             if (hero.features && Array.isArray(hero.features)) {
                 const featuresContainer = document.getElementById('heroFeatures');
                 if (featuresContainer) {
@@ -397,7 +286,6 @@
         async initBannerSection() {
             if (!state.banners || state.banners.length === 0) {
                 console.log('⚠️ No banners data, using default banners');
-                // 기본 배너 사용
                 state.banners = [
                     {
                         title: "전국 어디서나<br><strong>성지 가격</strong>으로 드립니다",
@@ -426,7 +314,6 @@
             indicators.innerHTML = '';
             
             state.banners.forEach((banner, index) => {
-                // 슬라이드 생성
                 const slide = utils.createElement('div', 'banner-slide');
                 slide.innerHTML = `
                     <div class="slide-content">
@@ -439,7 +326,6 @@
                 `;
                 track.appendChild(slide);
                 
-                // 인디케이터 생성
                 const indicator = utils.createElement('div', index === 0 ? 'indicator active' : 'indicator');
                 indicator.addEventListener('click', () => {
                     this.goToBannerSlide(index);
@@ -453,117 +339,16 @@
             utils.showSection('bannerSection');
         },
 
-        async initHotDealsSection() {
-            if (!state.products || state.products.length === 0) {
-                console.log('⚠️ No products data, skipping hot deals section');
-                return;
-            }
-            
-            // 할인율 높은 상품들을 HOT 딜로 선별
-            const hotDeals = state.products
-                .map(product => {
-                    const { discountRate } = this.calculateDiscount(product.model, product.principal);
-                    return { ...product, discountRate };
-                })
-                .filter(product => product.discountRate > 0)
-                .sort((a, b) => b.discountRate - a.discountRate)
-                .slice(0, 6); // 상위 6개만 선택
-            
-            if (hotDeals.length === 0) {
-                console.log('⚠️ No discounted products found');
-                return;
-            }
-            
-            // HOT 딜 카루셀 렌더링
-            this.renderHotDeals(hotDeals);
-            
-            // 타이머 시작
-            this.startHotDealsTimer();
-            
-            utils.showSection('hotDealsSection');
-        },
-
-        async initAnalyticsSection() {
-            if (!state.analytics || state.analytics.totalProducts === 0) {
-                console.log('⚠️ No analytics data available');
-                return;
-            }
-            
-            const analyticsGrid = document.getElementById('analyticsGrid');
-            if (!analyticsGrid) return;
-            
-            analyticsGrid.innerHTML = '';
-            
-            // 통계 카드들 생성
-            const stats = [
-                {
-                    icon: '📱',
-                    value: utils.formatNumber(state.analytics.totalProducts),
-                    label: '전체 상품',
-                    change: null
-                },
-                {
-                    icon: '💰',
-                    value: `${state.analytics.avgDiscount}%`,
-                    label: '평균 할인율',
-                    change: state.analytics.avgDiscount > 30 ? 'positive' : null
-                },
-                {
-                    icon: '🎯',
-                    value: utils.formatKRW(state.analytics.maxSavings),
-                    label: '최대 절약 금액',
-                    change: 'positive'
-                }
-            ];
-            
-            // 브랜드별 통계 추가
-            if (state.analytics.topBrands.length > 0) {
-                const topBrand = state.analytics.topBrands[0];
-                stats.push({
-                    icon: '🏆',
-                    value: topBrand.brand,
-                    label: '최다 상품 브랜드',
-                    change: null
-                });
-            }
-            
-            stats.forEach((stat, index) => {
-                const statCard = utils.createElement('div', 'stat-card');
-                statCard.style.opacity = '0';
-                statCard.style.transform = 'translateY(20px)';
-                
-                statCard.innerHTML = `
-                    <div class="stat-icon">${stat.icon}</div>
-                    <div class="stat-value">${stat.value}</div>
-                    <div class="stat-label">${stat.label}</div>
-                    ${stat.change ? `<div class="stat-change ${stat.change}">↗ 우수</div>` : ''}
-                `;
-                
-                analyticsGrid.appendChild(statCard);
-                
-                // 스태거드 애니메이션
-                setTimeout(() => {
-                    statCard.style.opacity = '1';
-                    statCard.style.transform = 'translateY(0)';
-                    statCard.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
-                }, index * 150);
-            });
-            
-            utils.showSection('analyticsSection');
-        },
-
         async initAISection() {
             if (!state.config?.ai) return;
             
             const { ai } = state.config;
             
-            // AI 섹션 텍스트 업데이트
             utils.setElementContent('#aiBadgeText', ai.badgeText || '노피 AI');
             utils.setElementContent('#aiTitle', ai.title, true);
             utils.setElementContent('#aiDescription', ai.description, true);
             utils.setElementContent('#aiCtaText', ai.ctaText || 'AI 상담 시작');
             
-            // AI features 생성
             if (ai.features && Array.isArray(ai.features)) {
                 const featuresContainer = document.getElementById('aiFeatures');
                 if (featuresContainer) {
@@ -576,7 +361,6 @@
                 }
             }
             
-            // AI CTA 클릭 이벤트
             const aiCard = document.getElementById('aiCtaCard');
             if (aiCard && state.config.urls?.ai) {
                 aiCard.addEventListener('click', () => {
@@ -591,23 +375,166 @@
             utils.showSection('aiCtaSection');
         },
 
+        async initStatsSection() {
+            if (!state.products || state.products.length === 0) {
+                console.log('⚠️ No products data, skipping stats section');
+                return;
+            }
+            
+            const statsGrid = document.getElementById('statsGrid');
+            if (!statsGrid) return;
+            
+            // 통계 계산
+            const stats = this.calculateProductStats();
+            
+            statsGrid.innerHTML = '';
+            
+            // 통계 카드 생성
+            const statCards = [
+                {
+                    icon: '🔥',
+                    value: `${stats.maxDiscountRate}%`,
+                    label: '최대 할인율',
+                    change: '실시간 업데이트',
+                    changeClass: 'positive'
+                },
+                {
+                    icon: '💰',
+                    value: utils.formatKRW(stats.avgTotal),
+                    label: '평균 월 납부금',
+                    change: `전월 대비 ${stats.totalChange}원`,
+                    changeClass: stats.totalChange < 0 ? 'positive' : 'negative'
+                },
+                {
+                    icon: '📱',
+                    value: `${stats.totalProducts}개`,
+                    label: '전체 상품 수',
+                    change: `최신 업데이트: ${utils.formatDate(stats.latestUpdate)}`,
+                    changeClass: 'positive'
+                },
+                {
+                    icon: '📊',
+                    value: `${stats.carrierStats.SKT}:${stats.carrierStats.KT}:${stats.carrierStats.LGU}`,
+                    label: 'SKT:KT:LG+ 비율',
+                    change: '통신사별 상품 수',
+                    changeClass: 'positive'
+                }
+            ];
+            
+            statCards.forEach((stat, index) => {
+                const card = utils.createElement('div', 'stat-card');
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                
+                card.innerHTML = `
+                    <div class="stat-icon">${stat.icon}</div>
+                    <div class="stat-value">${stat.value}</div>
+                    <div class="stat-label">${stat.label}</div>
+                    <div class="stat-change ${stat.changeClass}">${stat.change}</div>
+                `;
+                
+                statsGrid.appendChild(card);
+                
+                // 스태거드 애니메이션
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                    card.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                }, index * 100);
+            });
+            
+            utils.showSection('statsSection');
+        },
+
+        async initPlanComparisonSection() {
+            if (!state.products || state.products.length === 0) {
+                console.log('⚠️ No products data, skipping plan comparison section');
+                return;
+            }
+            
+            // 탭 이벤트 리스너 설정
+            const tabs = document.querySelectorAll('.comparison-tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // 탭 활성화
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // 선택된 타입 업데이트
+                    state.selectedPlanType = tab.dataset.type;
+                    this.updatePlanComparison();
+                });
+            });
+            
+            // 초기 비교 데이터 렌더링
+            this.updatePlanComparison();
+            
+            utils.showSection('planComparisonSection');
+        },
+
+        updatePlanComparison() {
+            const comparisonContent = document.getElementById('comparisonContent');
+            if (!comparisonContent) return;
+            
+            // 필터링된 상품 데이터
+            const filteredProducts = state.products.filter(product => {
+                if (state.selectedPlanType === 'all') return true;
+                return product.type === state.selectedPlanType;
+            });
+            
+            // 통신사별 통계 계산
+            const carrierStats = this.calculateCarrierStats(filteredProducts);
+            
+            comparisonContent.innerHTML = '';
+            
+            // 통신사별 카드 생성
+            Object.entries(carrierStats).forEach(([carrier, stats]) => {
+                const planCard = utils.createElement('div', 'plan-card');
+                
+                planCard.innerHTML = `
+                    <div class="plan-carrier">${carrier}</div>
+                    <div class="plan-details">
+                        <div class="plan-detail">
+                            <span class="plan-detail-label">상품 수</span>
+                            <span class="plan-detail-value">${stats.count}개</span>
+                        </div>
+                        <div class="plan-detail">
+                            <span class="plan-detail-label">평균 요금</span>
+                            <span class="plan-detail-value">${utils.formatKRW(stats.avgPlan)}</span>
+                        </div>
+                        <div class="plan-detail">
+                            <span class="plan-detail-label">평균 총액</span>
+                            <span class="plan-detail-value">${utils.formatKRW(stats.avgTotal)}</span>
+                        </div>
+                        <div class="plan-detail">
+                            <span class="plan-detail-label">최저가</span>
+                            <span class="plan-detail-value">${utils.formatKRW(stats.minTotal)}</span>
+                        </div>
+                        <div class="plan-detail">
+                            <span class="plan-detail-label">평균 할부</span>
+                            <span class="plan-detail-value">${utils.formatKRW(stats.avgInstallment)}</span>
+                        </div>
+                    </div>
+                `;
+                
+                comparisonContent.appendChild(planCard);
+            });
+        },
+
         async initProductsSection() {
             if (!state.products || state.products.length === 0) {
                 console.log('⚠️ No products data, skipping products section');
                 return;
             }
             
-            // 섹션 제목 업데이트
             if (state.config?.products) {
                 utils.setElementContent('#productsTitle', state.config.products.title || '지금 가장 인기있는 상품');
                 utils.setElementContent('#productsSubtitle', state.config.products.subtitle || '할인율 높은 순으로 AI가 엄선한 추천 상품');
                 utils.setElementContent('#loadMoreText', state.config.products.loadMoreText || '전체 상품 보기');
             }
             
-            // 상품 렌더링
             this.renderProducts();
             
-            // 전체 상품 보기 버튼 이벤트
             const loadMoreBtn = document.getElementById('loadMoreBtn');
             if (loadMoreBtn && state.config?.urls?.products) {
                 loadMoreBtn.addEventListener('click', () => {
@@ -624,101 +551,100 @@
                 return;
             }
             
-            // 섹션 제목 업데이트
             if (state.config?.reviews) {
                 utils.setElementContent('#reviewsTitle', state.config.reviews.title || '실시간 고객 후기');
                 utils.setElementContent('#reviewsSubtitle', state.config.reviews.subtitle || '실제 구매 고객들의 생생한 경험담');
             }
             
-            // 평점 통계 계산 및 표시
             this.updateReviewStats();
-            
-            // 리뷰 렌더링
             this.renderReviews();
-            
-            // 리뷰 분석 렌더링
-            this.renderReviewAnalytics();
             
             utils.showSection('reviewsSection');
         },
 
-        renderHotDeals(hotDeals) {
-            const dealsCarousel = document.getElementById('dealsCarousel');
-            if (!dealsCarousel) return;
+        // 통계 계산 함수들
+        calculateProductStats() {
+            if (!state.products.length) {
+                return {
+                    maxDiscountRate: 0,
+                    avgTotal: 0,
+                    totalProducts: 0,
+                    latestUpdate: new Date(),
+                    totalChange: 0,
+                    carrierStats: { SKT: 0, KT: 0, LGU: 0 }
+                };
+            }
             
-            dealsCarousel.innerHTML = '';
+            let maxDiscountRate = 0;
+            let totalSum = 0;
+            let latestDate = new Date(0);
+            const carrierCounts = { SKT: 0, KT: 0, LGU: 0 };
             
-            hotDeals.forEach((deal, index) => {
-                const { discount, discountRate, originPrice } = this.calculateDiscount(deal.model, deal.principal);
-                const modelInfo = state.models[deal.model] || {};
+            state.products.forEach(product => {
+                // 할인율 계산
+                const { discountRate } = this.calculateDiscount(product.model, product.principal);
+                if (discountRate > maxDiscountRate) {
+                    maxDiscountRate = discountRate;
+                }
                 
-                const dealCard = utils.createElement('div', 'deal-card');
-                dealCard.style.opacity = '0';
-                dealCard.style.transform = 'translateY(20px)';
+                // 평균 총액 계산
+                totalSum += product.total;
                 
-                dealCard.innerHTML = `
-                    <div class="deal-badge">${discountRate}% OFF</div>
-                    <div class="deal-content">
-                        <div class="deal-model">${utils.sanitizeHTML(deal.model)}</div>
-                        <div class="deal-price">${utils.formatKRW(deal.total)}</div>
-                        <div class="deal-original-price">${utils.formatKRW(originPrice)}</div>
-                        <div class="deal-specs">
-                            <span class="spec-tag">${utils.sanitizeHTML(deal.carrier)}</span>
-                            <span class="spec-tag">${utils.sanitizeHTML(deal.type)}</span>
-                            ${modelInfo.storage ? `<span class="spec-tag">${modelInfo.storage}</span>` : ''}
-                        </div>
-                        <div class="deal-timer">⏰ 한정 특가</div>
-                    </div>
-                `;
+                // 최신 업데이트 날짜
+                const productDate = new Date(product.date);
+                if (productDate > latestDate) {
+                    latestDate = productDate;
+                }
                 
-                dealCard.addEventListener('click', () => {
-                    this.handleProductClick(deal);
-                });
-                
-                dealsCarousel.appendChild(dealCard);
-                
-                // 스태거드 애니메이션
-                setTimeout(() => {
-                    dealCard.style.opacity = '1';
-                    dealCard.style.transform = 'translateY(0)';
-                    dealCard.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
-                }, index * 100);
+                // 통신사별 통계
+                if (carrierCounts.hasOwnProperty(product.carrier)) {
+                    carrierCounts[product.carrier]++;
+                }
             });
+            
+            return {
+                maxDiscountRate,
+                avgTotal: Math.round(totalSum / state.products.length),
+                totalProducts: state.products.length,
+                latestUpdate: latestDate,
+                totalChange: -5000, // 임시값 (실제로는 이전 데이터와 비교 필요)
+                carrierStats: carrierCounts
+            };
         },
 
-        startHotDealsTimer() {
-            const timerDisplay = document.getElementById('dealTimer');
-            if (!timerDisplay) return;
+        calculateCarrierStats(products) {
+            const carriers = {};
             
-            let minutes = 59;
-            let seconds = 59;
-            
-            const updateTimer = () => {
-                timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                
-                if (seconds === 0) {
-                    if (minutes === 0) {
-                        minutes = 59;
-                        seconds = 59;
-                        // 딜 갱신 효과
-                        const dealsCarousel = document.getElementById('dealsCarousel');
-                        if (dealsCarousel) {
-                            dealsCarousel.style.opacity = '0.7';
-                            setTimeout(() => {
-                                dealsCarousel.style.opacity = '1';
-                            }, 500);
-                        }
-                    } else {
-                        minutes--;
-                        seconds = 59;
-                    }
-                } else {
-                    seconds--;
+            products.forEach(product => {
+                if (!carriers[product.carrier]) {
+                    carriers[product.carrier] = {
+                        count: 0,
+                        totalPlan: 0,
+                        totalAmount: 0,
+                        totalInstallment: 0,
+                        minTotal: Infinity
+                    };
                 }
-            };
+                
+                const carrier = carriers[product.carrier];
+                carrier.count++;
+                carrier.totalPlan += product.plan;
+                carrier.totalAmount += product.total;
+                carrier.totalInstallment += product.installment;
+                
+                if (product.total < carrier.minTotal) {
+                    carrier.minTotal = product.total;
+                }
+            });
             
-            updateTimer();
-            state.hotDealsInterval = setInterval(updateTimer, 1000);
+            // 평균 계산
+            Object.values(carriers).forEach(carrier => {
+                carrier.avgPlan = Math.round(carrier.totalPlan / carrier.count);
+                carrier.avgTotal = Math.round(carrier.totalAmount / carrier.count);
+                carrier.avgInstallment = Math.round(carrier.totalInstallment / carrier.count);
+            });
+            
+            return carriers;
         },
 
         renderProducts() {
@@ -727,26 +653,22 @@
             
             if (!loadingElement || !gridElement) return;
             
-            // 상품 필터링 및 정렬
             const filteredProducts = this.filterAndSortProducts();
             
-            // 로딩 숨기고 그리드 표시
             loadingElement.style.display = 'none';
             gridElement.style.display = 'grid';
             gridElement.innerHTML = '';
             
-            // 상품이 없을 경우
             if (filteredProducts.length === 0) {
                 gridElement.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--gray-500);">표시할 상품이 없습니다.</div>';
                 return;
             }
             
-            // 상품 카드 생성
+            // 상품 카드 생성 (더 상세한 버전)
             filteredProducts.slice(0, 4).forEach((product, index) => {
-                const card = this.createProductCard(product);
+                const card = this.createDetailedProductCard(product);
                 gridElement.appendChild(card);
                 
-                // 스태거드 애니메이션
                 setTimeout(() => {
                     card.style.opacity = '1';
                     card.style.transform = 'translateY(0)';
@@ -757,7 +679,6 @@
         filterAndSortProducts() {
             return state.products
                 .filter(product => {
-                    // 기본 필터링
                     if (product.total < 30000) return false;
                     return true;
                 })
@@ -773,10 +694,9 @@
                 });
         },
 
-        createProductCard(product) {
+        createDetailedProductCard(product) {
             const brandInfo = this.getBrandInfo(product.brand);
             const { discount, discountRate, originPrice } = this.calculateDiscount(product.model, product.principal);
-            const modelInfo = state.models[product.model] || {};
             
             const card = utils.createElement('div', 'product-card');
             card.style.opacity = '0';
@@ -786,6 +706,8 @@
             const supportText = this.getSupportText(product.support);
             
             card.innerHTML = `
+                ${discountRate > 0 ? `<div class="discount-banner">${discountRate}% 할인</div>` : ''}
+                
                 <div class="product-header">
                     <div class="brand-icon ${brandInfo.hasImage ? '' : 'text-icon'}" ${brandInfo.hasImage ? `style="background-image: url(${brandInfo.logo})"` : ''}>${brandInfo.hasImage ? '' : brandInfo.icon}</div>
                     <div class="product-info">
@@ -797,51 +719,49 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="product-details">
-                    <div class="details-grid">
-                        ${modelInfo.storage ? `
-                            <div class="detail-item">
-                                <span class="detail-label">용량</span>
-                                <span class="detail-value">${modelInfo.storage}</span>
-                            </div>
-                        ` : ''}
-                        ${modelInfo.releaseDate ? `
-                            <div class="detail-item">
-                                <span class="detail-label">출시일</span>
-                                <span class="detail-value">${modelInfo.releaseDate}</span>
-                            </div>
-                        ` : ''}
-                        ${product.plan_period ? `
-                            <div class="detail-item">
-                                <span class="detail-label">약정기간</span>
-                                <span class="detail-value">${product.plan_period}</span>
-                            </div>
-                        ` : ''}
-                        ${product.plan_name ? `
-                            <div class="detail-item">
-                                <span class="detail-label">요금제</span>
-                                <span class="detail-value">${product.plan_name}</span>
-                            </div>
-                        ` : ''}
+                
+                <div class="price-details">
+                    <div class="price-row">
+                        <span class="price-label">출고가</span>
+                        <span class="price-value">${utils.formatKRW(originPrice)}</span>
+                    </div>
+                    ${discount > 0 ? `
+                    <div class="price-row">
+                        <span class="price-label">단말 할인</span>
+                        <span class="price-value">-${utils.formatKRW(discount)}</span>
+                    </div>
+                    ` : ''}
+                    <div class="price-row">
+                        <span class="price-label">월 통신요금</span>
+                        <span class="price-value">${utils.formatKRW(product.plan)}</span>
+                    </div>
+                    <div class="price-row">
+                        <span class="price-label">월 할부금</span>
+                        <span class="price-value">${utils.formatKRW(product.installment)}</span>
+                    </div>
+                    <div class="price-row">
+                        <span class="price-label">월 총 납부금</span>
+                        <span class="price-value price-highlight">${utils.formatKRW(product.total)}</span>
                     </div>
                 </div>
                 
-                <div class="price-section">
-                    <div class="original-price">
-                        <span class="price-original">${utils.formatKRW(originPrice)}</span>
-                        ${discountRate > 0 ? `<span class="discount-badge">${discountRate}% 할인</span>` : ''}
+                <div class="contract-info">
+                    <div class="contract-item">
+                        <div class="contract-label">계약 기간</div>
+                        <div class="contract-value">${product.contract_period}개월</div>
                     </div>
-                    ${discount > 0 ? `<div class="discount-amount">- ${utils.formatKRW(discount)} 할인</div>` : ''}
+                    <div class="contract-item">
+                        <div class="contract-label">요금제 유지</div>
+                        <div class="contract-value">${product.plan_period}개월</div>
+                    </div>
                 </div>
                 
                 <div class="final-price">
-                    <div class="price-label">월 납부금 (기기값 + 요금제)</div>
-                    <div class="price-value">${utils.formatKRW(product.total)}</div>
+                    <div class="final-price-label">월 납부 총액</div>
+                    <div class="final-price-value">${utils.formatKRW(product.total)}</div>
                 </div>
             `;
             
-            // 클릭 이벤트
             card.addEventListener('click', () => {
                 this.handleProductClick(product);
             });
@@ -884,7 +804,6 @@
                 
                 reviewsScroll.appendChild(reviewCard);
                 
-                // 스태거드 애니메이션
                 setTimeout(() => {
                     reviewCard.style.opacity = '1';
                     reviewCard.style.transform = 'translateY(0)';
@@ -892,62 +811,13 @@
                 }, index * 100);
             });
             
-            // 자동 스크롤 시작
             this.startReviewAutoScroll();
-        },
-
-        renderReviewAnalytics() {
-            const keywordCloud = document.getElementById('keywordCloud');
-            const sentimentBars = document.getElementById('sentimentBars');
-            
-            if (!keywordCloud || !sentimentBars) return;
-            
-            // 키워드 추출
-            const allComments = state.reviews.map(review => review.comment).join(' ');
-            const keywords = utils.extractKeywords(allComments);
-            
-            keywordCloud.innerHTML = '';
-            keywords.slice(0, 8).forEach(keyword => {
-                const keywordTag = utils.createElement('span', 'keyword-tag', keyword);
-                keywordCloud.appendChild(keywordTag);
-            });
-            
-            // 감정 분석
-            const sentiments = { positive: 0, neutral: 0, negative: 0 };
-            state.reviews.forEach(review => {
-                const sentiment = utils.analyzeSentiment(review.comment);
-                sentiments[sentiment]++;
-            });
-            
-            const total = state.reviews.length;
-            const positivePercent = Math.round((sentiments.positive / total) * 100);
-            const neutralPercent = Math.round((sentiments.neutral / total) * 100);
-            const negativePercent = Math.round((sentiments.negative / total) * 100);
-            
-            sentimentBars.innerHTML = `
-                <div class="sentiment-bar">
-                    <div class="sentiment-label">긍정</div>
-                    <div class="sentiment-value sentiment-positive" style="width: ${positivePercent}%"></div>
-                    <div class="sentiment-percent">${positivePercent}%</div>
-                </div>
-                <div class="sentiment-bar">
-                    <div class="sentiment-label">중립</div>
-                    <div class="sentiment-value sentiment-neutral" style="width: ${neutralPercent}%"></div>
-                    <div class="sentiment-percent">${neutralPercent}%</div>
-                </div>
-                <div class="sentiment-bar">
-                    <div class="sentiment-label">부정</div>
-                    <div class="sentiment-value sentiment-negative" style="width: ${negativePercent}%"></div>
-                    <div class="sentiment-percent">${negativePercent}%</div>
-                </div>
-            `;
         },
 
         updateReviewStats() {
             const ratingSummary = document.getElementById('ratingSummary');
             if (!ratingSummary || !state.reviews.length) return;
             
-            // 평점 통계 계산
             const totalRating = state.reviews.reduce((sum, review) => sum + review.rating, 0);
             const avgRating = (totalRating / state.reviews.length).toFixed(1);
             const starDisplay = '⭐'.repeat(Math.floor(avgRating));
@@ -978,14 +848,12 @@
                 return state.models[model].originPrice;
             }
             
-            // 부분 매칭
             for (const [key, value] of Object.entries(state.models)) {
                 if (model.includes(key) || key.includes(model)) {
                     return value.originPrice;
                 }
             }
             
-            // 기본값
             return 1000000;
         },
 
@@ -1104,7 +972,6 @@
                 }
             };
             
-            // 이벤트 리스너
             ['touchstart', 'mousedown'].forEach(event => {
                 reviewsScroll.addEventListener(event, () => {
                     userInteracting = true;
@@ -1160,27 +1027,20 @@
 
         // 이벤트 리스너 초기화
         initEventListeners() {
-            // 페이지 가시성 변경 처리
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
                     this.stopBannerAutoSlide();
-                    if (state.hotDealsInterval) {
-                        clearInterval(state.hotDealsInterval);
-                    }
                 } else {
                     this.startBannerAutoSlide();
-                    this.startHotDealsTimer();
                 }
             });
 
-            // 키보드 접근성
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
                     // 필요시 모달 닫기 등
                 }
             });
 
-            // 에러 발생 시 처리
             window.addEventListener('error', (e) => {
                 console.error('Runtime error:', e.error);
             });
@@ -1200,24 +1060,20 @@
     // 🚀 메인 초기화 함수
     async function initNofeeMain() {
         try {
-            console.log('🚀 노피 메인페이지 v4.0 초기화 시작 (창의적 기능 강화)');
+            console.log('🚀 노피 메인페이지 v3.2 초기화 시작 (창의적 기능 중심)');
             
-            // 모든 데이터 로드 및 UI 초기화
             await dataLoader.loadAllData();
             
-            // 전역 함수 등록 (웹플로우 호환성)
             window.nofeeState = state;
             
-            console.log('✅ 노피 메인페이지 v4.0 초기화 완료');
+            console.log('✅ 노피 메인페이지 v3.2 초기화 완료');
             
-            // 초기화 완료 이벤트
             window.dispatchEvent(new CustomEvent('nofeeMainReady', {
                 detail: { 
-                    version: '4.0', 
+                    version: '3.2', 
                     timestamp: Date.now(),
                     dataLoaded: state.isDataLoaded,
-                    errors: state.loadingErrors,
-                    analytics: state.analytics
+                    errors: state.loadingErrors
                 }
             }));
             
@@ -1238,9 +1094,6 @@
     window.addEventListener('beforeunload', () => {
         if (state.bannerInterval) {
             clearInterval(state.bannerInterval);
-        }
-        if (state.hotDealsInterval) {
-            clearInterval(state.hotDealsInterval);
         }
     });
 
