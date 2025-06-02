@@ -30,7 +30,9 @@
     };
     
     // GitHub 저장소 설정
-    const PRODUCTS_DATA_URL = 'https://jacob-po.github.io/products-data/products.json';
+    // const PRODUCTS_DATA_URL = 'https://jacob-po.github.io/products-data/products.json';
+    const GITHUB_BASE_URL = 'https://jacob-po.github.io/nofee-webflow';
+    const PRODUCTS_DATA_URL = `${GITHUB_BASE_URL}/data/products.json`;
     
     // 설정값
     const CONFIG = {
