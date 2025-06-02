@@ -1,374 +1,774 @@
-// 🚀 노피 메인페이지 스크립트 - GitHub 관리용
+// 🚀 노피 메인페이지 스크립트 v3.0 - 완전 데이터 의존형
 (function() {
     'use strict';
     
     // 🎯 전역 상태 관리
-    let allProducts = [];
-    let currentBannerIndex = 0;
-    let bannerInterval;
-    let configData = {};
-    let modelsData = {};
-    let brandsData = {};
+    let state = {
+        config: null,
+        products: [],
+        reviews: [],
+        banners: [],
+        brands: {},
+        models: {},
+        regions: [],
+        selectedRegion: null,
+        currentBannerIndex: 0,
+        bannerInterval: null,
+        isDataLoaded: false,
+        loadingErrors: []
+    };
 
     // GitHub 저장소 설정
-    // 현재 스크립트 경로 기준으로 GitHub Pages 루트 계산
     const scriptUrl = new URL(document.currentScript.src);
     const basePath = scriptUrl.pathname.split('/').slice(0, -2).join('/');
     const GITHUB_BASE_URL = scriptUrl.origin + basePath;
-    // products.json을 같은 저장소로 이동한 경우:
-    const PRODUCTS_DATA_URL = `${GITHUB_BASE_URL}/data/products.json`;
-    // 외부 저장소를 계속 사용하려면 아래 주석을 해제하고 위 줄을 주석처리:
-    // const PRODUCTS_DATA_URL = 'https://raw.githubusercontent.com/jacob-po/products-data/main/products.json';
     
-    const REVIEWS_DATA_URL = `${GITHUB_BASE_URL}/data/review.json`;
-    const BANNERS_DATA_URL = `${GITHUB_BASE_URL}/data/banners.json`;
-    const BRANDS_DATA_URL = `${GITHUB_BASE_URL}/data/brands.json`;
-    const MODELS_DATA_URL = `${GITHUB_BASE_URL}/data/models.json`;
-    const CONFIG_DATA_URL = `${GITHUB_BASE_URL}/data/config.json`;
-
-    // 🎨 유틸리티 함수들
-    const formatKRW = (value) => {
-        return Math.abs(Number(value)).toLocaleString("ko-KR") + "원";
+    // 📂 데이터 URL 설정
+    const DATA_URLS = {
+        config: `${GITHUB_BASE_URL}/data/config.json`,
+        products: `${GITHUB_BASE_URL}/data/products.json`,
+        reviews: `${GITHUB_BASE_URL}/data/review.json`,
+        banners: `${GITHUB_BASE_URL}/data/banner.json`, // 수정: banners.json → banner.json
+        brands: `${GITHUB_BASE_URL}/data/brands.json`,
+        models: `${GITHUB_BASE_URL}/data/models.json`,
+        regions: `${GITHUB_BASE_URL}/data/regions.json`
     };
 
-    const getBrandInfo = (brand) => {
-        // 영문 브랜드명을 한글로 변환
-        let normalizedBrand = brand;
-        if (brand && brand.toLowerCase() === 'samsung') {
-            normalizedBrand = '삼성';
-        } else if (brand && brand.toLowerCase() === 'apple') {
-            normalizedBrand = '애플';
-        }
-        
-        // 브랜드 데이터가 로드되어 있으면 사용
-        if (brandsData) {
-            // 영문 브랜드명으로도 검색
-            if (brandsData[brand]) {
-                return {
-                    icon: brandsData[brand].icon,
-                    class: brandsData[brand].class,
-                    displayName: normalizedBrand,
-                    ...brandsData[brand]
+    // 🔧 유틸리티 함수들
+    const utils = {
+        formatKRW: (value) => {
+            return Math.abs(Number(value)).toLocaleString("ko-KR") + "원";
+        },
+
+        debounce: (func, wait) => {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
                 };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        },
+
+        sanitizeHTML: (str) => {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        },
+
+        createElement: (tag, className, innerHTML) => {
+            const element = document.createElement(tag);
+            if (className) element.className = className;
+            if (innerHTML) element.innerHTML = innerHTML;
+            return element;
+        },
+
+        setElementContent: (selector, content, isHTML = false) => {
+            const element = document.querySelector(selector);
+            if (element) {
+                if (isHTML) {
+                    element.innerHTML = content;
+                } else {
+                    element.textContent = content;
+                }
             }
-            // 한글 브랜드명으로 검색
-            if (brandsData[normalizedBrand]) {
-                return {
-                    icon: brandsData[normalizedBrand].icon,
-                    class: brandsData[normalizedBrand].class,
-                    displayName: normalizedBrand,
-                    ...brandsData[normalizedBrand]
-                };
+        },
+
+        showSection: (sectionId) => {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.style.display = 'block';
+                setTimeout(() => section.classList.add('visible'), 100);
             }
-        }
-        
-        // 기본값
-        switch(normalizedBrand) {
-            case '삼성': return { icon: 'S', class: 'samsung', displayName: '삼성' };
-            case '애플': return { icon: 'A', class: 'apple', displayName: '애플' };
-            default: return { icon: '📱', class: 'etc', displayName: brand };
+        },
+
+        hideSection: (sectionId) => {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.style.display = 'none';
+                section.classList.remove('visible');
+            }
         }
     };
 
-    // 출고가 가져오기
-    const getOriginPrice = (model) => {
-        // modelsData에서 모델명으로 출고가 검색
-        if (modelsData && modelsData[model]) {
-            return modelsData[model].originPrice;
-        }
+    // 📥 데이터 로더
+    const dataLoader = {
+        async fetchData(url, name) {
+            try {
+                console.log(`📥 Loading ${name} from ${url}`);
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log(`✅ ${name} loaded successfully:`, data);
+                return data;
+            } catch (error) {
+                console.error(`❌ Failed to load ${name}:`, error.message);
+                state.loadingErrors.push({ name, error: error.message });
+                throw error;
+            }
+        },
 
-        // 부분 매칭으로 검색
-        if (modelsData) {
-            for (const [key, value] of Object.entries(modelsData)) {
+        async loadAllData() {
+            const loadingElement = document.getElementById('initialLoading');
+            
+            try {
+                // 1단계: 필수 설정 데이터 로드
+                console.log('🚀 1단계: 필수 설정 데이터 로드');
+                state.config = await this.fetchData(DATA_URLS.config, 'config');
+                
+                // 설정 데이터로 기본 UI 업데이트
+                this.updateBasicUI();
+                
+                // 2단계: 코어 데이터 병렬 로드
+                console.log('🚀 2단계: 코어 데이터 병렬 로드');
+                const coreDataPromises = [
+                    this.fetchData(DATA_URLS.models, 'models').then(data => state.models = data).catch(() => state.models = {}),
+                    this.fetchData(DATA_URLS.brands, 'brands').then(data => state.brands = data).catch(() => state.brands = {}),
+                    this.fetchData(DATA_URLS.regions, 'regions').then(data => state.regions = data).catch(() => state.regions = [])
+                ];
+                
+                await Promise.allSettled(coreDataPromises);
+                
+                // 3단계: 컨텐츠 데이터 병렬 로드
+                console.log('🚀 3단계: 컨텐츠 데이터 병렬 로드');
+                const contentDataPromises = [
+                    this.fetchData(DATA_URLS.banners, 'banners').then(data => state.banners = data).catch(() => state.banners = []),
+                    this.fetchData(DATA_URLS.products, 'products').then(data => state.products = data).catch(() => state.products = []),
+                    this.fetchData(DATA_URLS.reviews, 'reviews').then(data => state.reviews = data).catch(() => state.reviews = [])
+                ];
+                
+                await Promise.allSettled(contentDataPromises);
+                
+                state.isDataLoaded = true;
+                console.log('✅ All data loaded successfully');
+                
+                // 로딩 화면 숨기기
+                utils.hideSection('initialLoading');
+                
+                // UI 초기화
+                await this.initializeAllSections();
+                
+            } catch (error) {
+                console.error('❌ Critical data loading failed:', error);
+                this.showError('필수 데이터를 불러올 수 없습니다');
+            }
+        },
+
+        updateBasicUI() {
+            if (!state.config) return;
+            
+            const config = state.config;
+            
+            // 사이트 제목 및 메타 업데이트
+            if (config.site?.title) {
+                document.title = config.site.title;
+            }
+            
+            // Hero 섹션 업데이트
+            if (config.hero) {
+                utils.setElementContent('#heroTitle', config.hero.title, true);
+                utils.setElementContent('#heroSubtitle', config.hero.subtitle);
+                
+                if (config.hero.logo) {
+                    utils.setElementContent('#heroLogo', config.hero.logo);
+                }
+            }
+            
+            // CSS 변수 업데이트 (테마 색상)
+            if (config.theme) {
+                const root = document.documentElement;
+                Object.entries(config.theme).forEach(([key, value]) => {
+                    root.style.setProperty(`--site-${key}`, value);
+                });
+            }
+        },
+
+        async initializeAllSections() {
+            try {
+                // 순차적으로 섹션 초기화
+                await this.initHeroSection();
+                await this.initRegionSection();
+                await this.initBannerSection();
+                await this.initAISection();
+                await this.initProductsSection();
+                await this.initPriceInfoSection();
+                await this.initReviewsSection();
+                await this.initBrandSection();
+                
+                // 애니메이션 및 인터랙션 초기화
+                this.initAnimations();
+                this.initEventListeners();
+                
+                console.log('🎉 All sections initialized successfully');
+                
+            } catch (error) {
+                console.error('❌ Section initialization failed:', error);
+                this.showError('페이지 초기화 중 오류가 발생했습니다');
+            }
+        },
+
+        async initHeroSection() {
+            if (!state.config?.hero) return;
+            
+            const { hero } = state.config;
+            
+            // Hero features 생성
+            if (hero.features && Array.isArray(hero.features)) {
+                const featuresContainer = document.getElementById('heroFeatures');
+                if (featuresContainer) {
+                    featuresContainer.innerHTML = '';
+                    
+                    hero.features.forEach(feature => {
+                        const badge = utils.createElement('div', 'feature-badge');
+                        badge.innerHTML = `
+                            <span class="emoji">${feature.emoji}</span>
+                            ${feature.text}
+                        `;
+                        featuresContainer.appendChild(badge);
+                    });
+                }
+            }
+            
+            utils.showSection('heroSection');
+        },
+
+        async initRegionSection() {
+            if (!state.regions || state.regions.length === 0) {
+                console.log('⚠️ No regions data, skipping region section');
+                return;
+            }
+            
+            const regionGrid = document.getElementById('regionGrid');
+            if (!regionGrid) return;
+            
+            regionGrid.innerHTML = '';
+            
+            // 지역 데이터 처리
+            const regions = Array.isArray(state.regions) ? state.regions : [state.regions];
+            
+            regions.forEach(region => {
+                const regionItem = utils.createElement('div', 'region-item');
+                regionItem.textContent = region.name || region;
+                regionItem.dataset.regionId = region.id || region.name || region;
+                
+                regionItem.addEventListener('click', () => {
+                    // 이전 선택 제거
+                    regionGrid.querySelectorAll('.region-item').forEach(item => {
+                        item.classList.remove('selected');
+                    });
+                    
+                    // 새로운 선택
+                    regionItem.classList.add('selected');
+                    state.selectedRegion = region;
+                    
+                    console.log('📍 Region selected:', region);
+                    
+                    // 상품 필터링 업데이트 (필요시)
+                    if (state.isDataLoaded) {
+                        this.updateProductsForRegion();
+                    }
+                });
+                
+                regionGrid.appendChild(regionItem);
+            });
+            
+            // 지역 섹션 텍스트 업데이트
+            if (state.config?.regions) {
+                utils.setElementContent('#regionTitle', state.config.regions.title || '내 지역 선택');
+                utils.setElementContent('#regionSubtitle', state.config.regions.subtitle || '가까운 성지를 찾아드려요');
+            }
+            
+            utils.showSection('regionSection');
+        },
+
+        async initBannerSection() {
+            if (!state.banners || state.banners.length === 0) {
+                console.log('⚠️ No banners data, skipping banner section');
+                return;
+            }
+            
+            const track = document.getElementById('bannerTrack');
+            const indicators = document.getElementById('bannerIndicators');
+            
+            if (!track || !indicators) return;
+            
+            track.innerHTML = '';
+            indicators.innerHTML = '';
+            
+            state.banners.forEach((banner, index) => {
+                // 슬라이드 생성
+                const slide = utils.createElement('div', 'banner-slide');
+                slide.innerHTML = `
+                    <div class="slide-content">
+                        <div class="slide-text">
+                            <h3>${banner.title}</h3>
+                            <p>${banner.subtitle}</p>
+                        </div>
+                        <div class="slide-visual">${banner.emoji}</div>
+                    </div>
+                `;
+                track.appendChild(slide);
+                
+                // 인디케이터 생성
+                const indicator = utils.createElement('div', index === 0 ? 'indicator active' : 'indicator');
+                indicator.addEventListener('click', () => {
+                    this.goToBannerSlide(index);
+                    this.stopBannerAutoSlide();
+                    setTimeout(() => this.startBannerAutoSlide(), 3000);
+                });
+                indicators.appendChild(indicator);
+            });
+            
+            this.startBannerAutoSlide();
+            utils.showSection('bannerSection');
+        },
+
+        async initAISection() {
+            if (!state.config?.ai) return;
+            
+            const { ai } = state.config;
+            
+            // AI 섹션 텍스트 업데이트
+            utils.setElementContent('#aiBadgeText', ai.badgeText || '노피 AI');
+            utils.setElementContent('#aiTitle', ai.title, true);
+            utils.setElementContent('#aiDescription', ai.description, true);
+            utils.setElementContent('#aiCtaText', ai.ctaText || 'AI 상담 시작');
+            
+            // AI features 생성
+            if (ai.features && Array.isArray(ai.features)) {
+                const featuresContainer = document.getElementById('aiFeatures');
+                if (featuresContainer) {
+                    featuresContainer.innerHTML = '';
+                    
+                    ai.features.forEach(feature => {
+                        const tag = utils.createElement('span', 'feature-tag', feature);
+                        featuresContainer.appendChild(tag);
+                    });
+                }
+            }
+            
+            // AI CTA 클릭 이벤트
+            const aiCard = document.getElementById('aiCtaCard');
+            if (aiCard && state.config.urls?.ai) {
+                aiCard.addEventListener('click', () => {
+                    window.open(state.config.urls.ai, '_blank');
+                });
+                
+                aiCard.setAttribute('tabindex', '0');
+                aiCard.setAttribute('role', 'button');
+                aiCard.setAttribute('aria-label', ai.ctaText || 'AI 상담 시작');
+            }
+            
+            utils.showSection('aiCtaSection');
+        },
+
+        async initProductsSection() {
+            if (!state.products || state.products.length === 0) {
+                console.log('⚠️ No products data, skipping products section');
+                return;
+            }
+            
+            // 섹션 제목 업데이트
+            if (state.config?.products) {
+                utils.setElementContent('#productsTitle', state.config.products.title || '지금 가장 인기있는 상품');
+                utils.setElementContent('#productsSubtitle', state.config.products.subtitle || '할인율 높은 순으로 AI가 엄선한 추천 상품');
+                utils.setElementContent('#loadMoreText', state.config.products.loadMoreText || '전체 상품 보기');
+            }
+            
+            // 상품 렌더링
+            this.renderProducts();
+            
+            // 전체 상품 보기 버튼 이벤트
+            const loadMoreBtn = document.getElementById('loadMoreBtn');
+            if (loadMoreBtn && state.config?.urls?.products) {
+                loadMoreBtn.addEventListener('click', () => {
+                    window.open(state.config.urls.products, '_blank');
+                });
+            }
+            
+            utils.showSection('productsSection');
+        },
+
+        async initPriceInfoSection() {
+            if (!state.config?.priceInfo) return;
+            
+            const { priceInfo } = state.config;
+            
+            // 제목 업데이트
+            utils.setElementContent('#priceInfoTitle', priceInfo.title || '💰 상품 카드 가격 정보');
+            utils.setElementContent('#priceInfoSubtitle', priceInfo.subtitle || '각 숫자가 의미하는 바를 확인해보세요');
+            
+            // 정보 카드들 생성
+            if (priceInfo.cards && Array.isArray(priceInfo.cards)) {
+                const cardsContainer = document.getElementById('infoCards');
+                if (cardsContainer) {
+                    cardsContainer.innerHTML = '';
+                    
+                    priceInfo.cards.forEach(card => {
+                        const cardElement = utils.createElement('div', 'info-card');
+                        cardElement.innerHTML = `
+                            <div class="info-icon">${card.icon}</div>
+                            <div class="info-content">
+                                <h4>${card.title}</h4>
+                                <p>${card.description}</p>
+                                <div class="info-example ${card.highlight ? 'highlight' : ''}">${card.example}</div>
+                            </div>
+                        `;
+                        cardsContainer.appendChild(cardElement);
+                    });
+                }
+            }
+            
+            utils.showSection('priceInfoSection');
+        },
+
+        async initReviewsSection() {
+            if (!state.reviews || state.reviews.length === 0) {
+                console.log('⚠️ No reviews data, skipping reviews section');
+                return;
+            }
+            
+            // 섹션 제목 업데이트
+            if (state.config?.reviews) {
+                utils.setElementContent('#reviewsTitle', state.config.reviews.title || '실시간 고객 후기');
+                utils.setElementContent('#reviewsSubtitle', state.config.reviews.subtitle || '실제 구매 고객들의 생생한 경험담');
+            }
+            
+            // 평점 통계 계산 및 표시
+            this.updateReviewStats();
+            
+            // 리뷰 렌더링
+            this.renderReviews();
+            
+            utils.showSection('reviewsSection');
+        },
+
+        async initBrandSection() {
+            if (!state.brands || Object.keys(state.brands).length === 0) {
+                console.log('⚠️ No brands data, skipping brand section');
+                return;
+            }
+            
+            // 섹션 제목 업데이트
+            if (state.config?.brands) {
+                utils.setElementContent('#brandTitle', state.config.brands.title || '제조사별 상품');
+                utils.setElementContent('#brandSubtitle', state.config.brands.subtitle || '원하는 브랜드를 선택해 보세요');
+            }
+            
+            // 브랜드 렌더링
+            this.renderBrands();
+            
+            utils.showSection('brandSection');
+        },
+
+        updateProductsForRegion() {
+            // 지역별 상품 필터링 로직 (필요시 구현)
+            console.log('🔄 Updating products for region:', state.selectedRegion);
+            this.renderProducts();
+        },
+
+        renderProducts() {
+            const loadingElement = document.getElementById('productsLoading');
+            const gridElement = document.getElementById('productsGrid');
+            
+            if (!loadingElement || !gridElement) return;
+            
+            // 상품 필터링 및 정렬
+            const filteredProducts = this.filterAndSortProducts();
+            
+            // 로딩 숨기고 그리드 표시
+            loadingElement.style.display = 'none';
+            gridElement.style.display = 'grid';
+            gridElement.innerHTML = '';
+            
+            // 상품 카드 생성
+            filteredProducts.slice(0, 4).forEach((product, index) => {
+                const card = this.createProductCard(product);
+                gridElement.appendChild(card);
+                
+                // 스태거드 애니메이션
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 150);
+            });
+        },
+
+        filterAndSortProducts() {
+            return state.products
+                .filter(product => {
+                    // 기본 필터링
+                    if (product.total < 30000) return false;
+                    
+                    // 지역 필터링 (선택적)
+                    if (state.selectedRegion && product.region && product.region !== state.selectedRegion.id) {
+                        return false;
+                    }
+                    
+                    return true;
+                })
+                .map(product => {
+                    const { discountRate } = this.calculateDiscount(product.model, product.principal);
+                    return { ...product, discountRate };
+                })
+                .sort((a, b) => {
+                    if (a.discountRate === 0 && b.discountRate === 0) {
+                        return a.total - b.total;
+                    }
+                    return b.discountRate - a.discountRate;
+                });
+        },
+
+        createProductCard(product) {
+            const brandInfo = this.getBrandInfo(product.brand);
+            const { discount, discountRate, originPrice } = this.calculateDiscount(product.model, product.principal);
+            
+            const card = utils.createElement('div', 'product-card');
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+            
+            const supportText = this.getSupportText(product.support);
+            
+            card.innerHTML = `
+                <div class="product-header">
+                    <div class="brand-icon ${brandInfo.hasImage ? '' : 'text-icon'}" ${brandInfo.hasImage ? `style="background-image: url(${brandInfo.logo})"` : ''}>${brandInfo.hasImage ? '' : brandInfo.icon}</div>
+                    <div class="product-info">
+                        <h4>${utils.sanitizeHTML(product.model)}</h4>
+                        <div class="product-meta">
+                            <span class="meta-tag">${utils.sanitizeHTML(product.carrier)}</span>
+                            <span class="meta-tag">${utils.sanitizeHTML(product.type)}</span>
+                            <span class="meta-tag">${utils.sanitizeHTML(supportText)}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="price-section">
+                    <div class="original-price">
+                        <span class="price-original">${utils.formatKRW(originPrice)}</span>
+                        ${discountRate > 0 ? `<span class="discount-badge">${discountRate}% 할인</span>` : ''}
+                    </div>
+                    ${discount > 0 ? `<div class="discount-amount">- ${utils.formatKRW(discount)} 할인</div>` : ''}
+                </div>
+                
+                <div class="final-price">
+                    <div class="price-label">월 납부금 (기기값 + 요금제)</div>
+                    <div class="price-value">${utils.formatKRW(product.total)}</div>
+                </div>
+            `;
+            
+            // 클릭 이벤트
+            card.addEventListener('click', () => {
+                this.handleProductClick(product);
+            });
+            
+            return card;
+        },
+
+        renderReviews() {
+            const reviewsScroll = document.getElementById('reviewsScroll');
+            if (!reviewsScroll) return;
+            
+            reviewsScroll.innerHTML = '';
+            
+            state.reviews.forEach((review, index) => {
+                const stars = '⭐'.repeat(Math.floor(review.rating));
+                
+                const reviewCard = utils.createElement('div', 'review-card');
+                reviewCard.style.opacity = '0';
+                reviewCard.style.transform = 'translateY(20px)';
+                
+                let comment = review.comment;
+                if (review.highlight) {
+                    comment = comment.replace(
+                        new RegExp(review.highlight, 'gi'),
+                        `<span class='review-highlight'>${review.highlight}</span>`
+                    );
+                }
+                
+                reviewCard.innerHTML = `
+                    <div class="review-header">
+                        <div class="reviewer-avatar">${review.initial}</div>
+                        <div class="reviewer-info">
+                            <h5>${utils.sanitizeHTML(review.name)}</h5>
+                            <div class="review-rating">${stars} ${review.rating}</div>
+                        </div>
+                    </div>
+                    <div class="review-product">${utils.sanitizeHTML(review.product)}</div>
+                    <div class="review-text">${comment}</div>
+                `;
+                
+                reviewsScroll.appendChild(reviewCard);
+                
+                // 스태거드 애니메이션
+                setTimeout(() => {
+                    reviewCard.style.opacity = '1';
+                    reviewCard.style.transform = 'translateY(0)';
+                    reviewCard.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                }, index * 100);
+            });
+            
+            // 자동 스크롤 시작
+            this.startReviewAutoScroll();
+        },
+
+        renderBrands() {
+            const brandGrid = document.getElementById('brandGrid');
+            if (!brandGrid) return;
+            
+            brandGrid.innerHTML = '';
+            
+            Object.entries(state.brands).forEach(([brandName, brandData], index) => {
+                const stats = this.calculateBrandStats(brandName);
+                
+                const brandCard = utils.createElement('div', 'brand-card');
+                brandCard.style.opacity = '0';
+                brandCard.style.transform = 'translateY(20px)';
+                
+                brandCard.innerHTML = `
+                    ${brandData.logo ? `
+                        <div class="brand-logo">
+                            <img src="${brandData.logo}" alt="${brandName}" loading="lazy">
+                        </div>
+                    ` : ''}
+                    <h4>${utils.sanitizeHTML(brandName)}</h4>
+                    <p>${utils.sanitizeHTML(brandData.description || '')}</p>
+                    <div class="brand-stats">
+                        <div class="stat-row">
+                            <span class="stat-label">인기 모델</span>
+                            <span class="stat-value">${utils.sanitizeHTML(stats.popularModel.replace('갤럭시 ', ''))}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">최대 할인</span>
+                            <span class="stat-value highlight">${stats.maxDiscount}%</span>
+                        </div>
+                    </div>
+                    <div class="brand-arrow">›</div>
+                `;
+                
+                brandCard.addEventListener('click', () => {
+                    this.handleBrandClick(brandName);
+                });
+                
+                brandGrid.appendChild(brandCard);
+                
+                // 스태거드 애니메이션
+                setTimeout(() => {
+                    brandCard.style.opacity = '1';
+                    brandCard.style.transform = 'translateY(0)';
+                    brandCard.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                }, index * 200);
+            });
+        },
+
+        updateReviewStats() {
+            const ratingSummary = document.getElementById('ratingSummary');
+            if (!ratingSummary || !state.reviews.length) return;
+            
+            // 평점 통계 계산
+            const totalRating = state.reviews.reduce((sum, review) => sum + review.rating, 0);
+            const avgRating = (totalRating / state.reviews.length).toFixed(1);
+            const starDisplay = '⭐'.repeat(Math.floor(avgRating));
+            
+            ratingSummary.innerHTML = `
+                <span class="rating-score">${avgRating}</span>
+                <div>
+                    <div class="rating-stars">${starDisplay}</div>
+                    <div class="rating-count">${state.reviews.length.toLocaleString()}개 리뷰</div>
+                </div>
+            `;
+        },
+
+        // Helper 메서드들
+        getBrandInfo(brand) {
+            const brandData = state.brands[brand] || {};
+            
+            return {
+                icon: brandData.icon || brand.charAt(0).toUpperCase(),
+                logo: brandData.logo,
+                hasImage: !!brandData.logo,
+                displayName: brand
+            };
+        },
+
+        getOriginPrice(model) {
+            if (state.models[model]) {
+                return state.models[model].originPrice;
+            }
+            
+            // 부분 매칭
+            for (const [key, value] of Object.entries(state.models)) {
                 if (model.includes(key) || key.includes(model)) {
                     return value.originPrice;
                 }
             }
-        }
-
-        // 모델명에 따른 기본 출고가 추정 (영문 모델명도 처리)
-        const modelLower = model.toLowerCase();
-        
-        // Galaxy S25 시리즈
-        if (modelLower.includes('galaxy s25 ultra') || model.includes('갤럭시 S25 울트라')) return 1700000;
-        if (modelLower.includes('galaxy s25+') || modelLower.includes('galaxy s25 plus') || model.includes('갤럭시 S25 플러스')) return 1400000;
-        if (modelLower.includes('galaxy s25') || model.includes('갤럭시 S25')) return 1200000;
-        
-        // Galaxy S24 시리즈
-        if (modelLower.includes('galaxy s24 ultra') || model.includes('갤럭시 S24 울트라')) return 1600000;
-        if (modelLower.includes('galaxy s24+') || modelLower.includes('galaxy s24 plus') || model.includes('갤럭시 S24 플러스')) return 1300000;
-        if (modelLower.includes('galaxy s24 fe') || model.includes('갤럭시 S24 FE')) return 900000;
-        if (modelLower.includes('galaxy s24') || model.includes('갤럭시 S24')) return 1100000;
-        
-        // Galaxy Z 시리즈
-        if (modelLower.includes('galaxy z fold') || model.includes('갤럭시 Z 폴드')) return 2200000;
-        if (modelLower.includes('galaxy z flip') || model.includes('갤럭시 Z 플립')) return 1400000;
-        
-        // iPhone 시리즈
-        if (modelLower.includes('iphone 16 pro max') || model.includes('아이폰 16 프로 맥스')) return 1900000;
-        if (modelLower.includes('iphone 16 pro') || model.includes('아이폰 16 프로')) return 1550000;
-        if (modelLower.includes('iphone 16 plus') || model.includes('아이폰 16 플러스')) return 1350000;
-        if (modelLower.includes('iphone 16') || model.includes('아이폰 16')) return 1250000;
-        if (modelLower.includes('iphone 15') || model.includes('아이폰 15')) return 1150000;
-        
-        // 기본값
-        return 1000000;
-    };
-
-    const calculateDiscount = (model, principal) => {
-        const originPrice = getOriginPrice(model);
-        // principal이 음수면 할인, 양수면 추가 비용
-        if (principal >= 0) {
-            return { discount: 0, discountRate: 0, originPrice };
-        }
-        
-        const discount = Math.abs(principal);
-        const discountRate = Math.round((discount / originPrice) * 100);
-        return { discount, discountRate, originPrice };
-    };
-
-    // 🚀 초기 데이터 로드
-    async function loadInitialData() {
-        try {
-            console.log('초기 데이터 로드 시작...');
             
-            // 모든 설정 데이터를 병렬로 로드 (선택적)
-            const [configRes, modelsRes, brandsRes] = await Promise.all([
-                fetch(CONFIG_DATA_URL).then(r => {
-                    if (!r.ok) throw new Error(`Config: ${r.status}`);
-                    return r;
-                }).catch(err => {
-                    console.warn('Config 데이터 로드 실패 (선택적):', err.message);
-                    return null;
-                }),
-                fetch(MODELS_DATA_URL).then(r => {
-                    if (!r.ok) throw new Error(`Models: ${r.status}`);
-                    return r;
-                }).catch(err => {
-                    console.warn('Models 데이터 로드 실패 (선택적):', err.message);
-                    return null;
-                }),
-                fetch(BRANDS_DATA_URL).then(r => {
-                    if (!r.ok) throw new Error(`Brands: ${r.status}`);
-                    return r;
-                }).catch(err => {
-                    console.warn('Brands 데이터 로드 실패 (선택적):', err.message);
-                    return null;
-                })
-            ]);
+            // 기본값
+            return 1000000;
+        },
 
-            if (configRes && configRes.ok) {
-                configData = await configRes.json();
-                console.log('Config 데이터 로드 완료');
+        calculateDiscount(model, principal) {
+            const originPrice = this.getOriginPrice(model);
+            if (principal >= 0) {
+                return { discount: 0, discountRate: 0, originPrice };
             }
-            if (modelsRes && modelsRes.ok) {
-                modelsData = await modelsRes.json();
-                console.log('Models 데이터 로드 완료');
+            
+            const discount = Math.abs(principal);
+            const discountRate = Math.round((discount / originPrice) * 100);
+            return { discount, discountRate, originPrice };
+        },
+
+        getSupportText(support) {
+            const supportMap = {
+                'O': '지원금O',
+                'X': '지원금X',
+                '공시지원': '공시지원',
+                '선택약정': '선택약정'
+            };
+            return supportMap[support] || support;
+        },
+
+        calculateBrandStats(brandName) {
+            const brandProducts = state.products.filter(p => 
+                p.brand === brandName || p.brand.toLowerCase() === brandName.toLowerCase()
+            );
+            
+            if (brandProducts.length === 0) {
+                return {
+                    maxDiscount: 0,
+                    popularModel: state.brands[brandName]?.defaultModel || 'N/A',
+                    count: 0
+                };
             }
-            if (brandsRes && brandsRes.ok) {
-                brandsData = await brandsRes.json();
-                console.log('Brands 데이터 로드 완료');
-            }
-        } catch (error) {
-            console.warn('초기 데이터 로드 중 일부 실패 (계속 진행):', error.message);
-        }
-    }
-
-    // 🚀 배너 슬라이더
-    async function initBanner() {
-        const track = document.getElementById('bannerTrack');
-        const indicators = document.querySelector('.banner-indicators');
-        
-        if (!track || !indicators) {
-            console.error('배너 요소를 찾을 수 없습니다');
-            return;
-        }
-
-        // 기본 배너 데이터
-        const defaultBanners = [
-            {
-                title: "전국 어디서나<br><strong>성지 가격</strong>으로 드립니다",
-                subtitle: "오직 노피 입점 대리점에서만",
-                emoji: "🚀"
-            },
-            {
-                title: "부담없는 구매<br><strong>전화없이 견적신청</strong>",
-                subtitle: "신청과 카톡만으로 구매 끝!",
-                emoji: "⚡"
-            },
-            {
-                title: "전국 성지를 모두 찾아<br><strong>노피에 입점</strong> 시켰습니다",
-                subtitle: "어디서나 똑같은 가격!",
-                emoji: "🎯"
-            }
-        ];
-
-        let banners = defaultBanners;
-
-        try {
-            // GitHub에서 배너 데이터 로드 시도
-            const response = await fetch(BANNERS_DATA_URL);
-            if (response.ok) {
-                const loadedBanners = await response.json();
-                if (Array.isArray(loadedBanners) && loadedBanners.length > 0) {
-                    banners = loadedBanners;
-                    console.log('배너 데이터 로드 완료:', banners.length, '개');
+            
+            let maxDiscount = 0;
+            let popularModel = brandProducts[0].model;
+            
+            brandProducts.forEach(product => {
+                const { discountRate } = this.calculateDiscount(product.model, product.principal);
+                if (discountRate > maxDiscount) {
+                    maxDiscount = discountRate;
+                    popularModel = product.model;
                 }
-            }
-        } catch (error) {
-            console.warn('배너 파일 로드 실패, 기본 배너 사용:', error.message);
-        }
-
-        // 배너 슬라이드 생성
-        track.innerHTML = '';
-        indicators.innerHTML = '';
-        
-        banners.forEach((banner, index) => {
-            // 슬라이드 생성
-            const slide = document.createElement('div');
-            slide.className = 'banner-slide';
-            slide.innerHTML = `
-                <div class="slide-content">
-                    <div class="slide-text">
-                        <h3>${banner.title}</h3>
-                        <p>${banner.subtitle}</p>
-                    </div>
-                    <div class="slide-visual">${banner.emoji}</div>
-                </div>
-            `;
-            track.appendChild(slide);
-            
-            // 인디케이터 생성
-            const indicator = document.createElement('div');
-            indicator.className = index === 0 ? 'indicator active' : 'indicator';
-            indicators.appendChild(indicator);
-        });
-
-        const slideCount = banners.length;
-        if (slideCount === 0) return;
-
-        function goToSlide(index) {
-            currentBannerIndex = index;
-            track.style.transform = `translateX(-${currentBannerIndex * 100}%)`;
-            
-            const allIndicators = indicators.querySelectorAll('.indicator');
-            allIndicators.forEach((indicator, i) => {
-                indicator.classList.toggle('active', i === currentBannerIndex);
             });
-        }
-
-        function nextSlide() {
-            const nextIndex = (currentBannerIndex + 1) % slideCount;
-            goToSlide(nextIndex);
-        }
-
-        function startAutoSlide() {
-            if (slideCount > 1) {
-                bannerInterval = setInterval(nextSlide, 4000);
-            }
-        }
-
-        function stopAutoSlide() {
-            if (bannerInterval) {
-                clearInterval(bannerInterval);
-                bannerInterval = null;
-            }
-        }
-
-        // 인디케이터 클릭 이벤트
-        const allIndicators = indicators.querySelectorAll('.indicator');
-        allIndicators.forEach((indicator, index) => {
-            indicator.addEventListener('click', () => {
-                goToSlide(index);
-                stopAutoSlide();
-                setTimeout(startAutoSlide, 2000);
-            });
-        });
-
-        // 터치 스와이프 지원
-        let startX = 0;
-        let endX = 0;
-
-        track.addEventListener('touchstart', (e) => {
-            startX = e.touches[0].clientX;
-            stopAutoSlide();
-        }, { passive: true });
-
-        track.addEventListener('touchend', (e) => {
-            endX = e.changedTouches[0].clientX;
-            const diff = startX - endX;
             
-            if (Math.abs(diff) > 50 && slideCount > 1) {
-                if (diff > 0) {
-                    nextSlide();
-                } else {
-                    const prevIndex = currentBannerIndex === 0 ? slideCount - 1 : currentBannerIndex - 1;
-                    goToSlide(prevIndex);
-                }
-            }
+            return {
+                maxDiscount,
+                popularModel,
+                count: brandProducts.length
+            };
+        },
+
+        // 이벤트 핸들러들
+        handleProductClick(product) {
+            if (!state.config?.urls?.product) return;
             
-            setTimeout(startAutoSlide, 2000);
-        }, { passive: true });
-
-        // 마우스 호버 시 자동 슬라이드 중지
-        track.addEventListener('mouseenter', stopAutoSlide);
-        track.addEventListener('mouseleave', startAutoSlide);
-
-        startAutoSlide();
-
-        // 페이지 가시성 변경 시 처리
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                stopAutoSlide();
-            } else {
-                startAutoSlide();
-            }
-        });
-    }
-
-    // 🏆 상품 카드 생성
-    function createProductCard(product) {
-        const brandInfo = getBrandInfo(product.brand);
-        const { discount, discountRate, originPrice } = calculateDiscount(product.model, product.principal);
-        
-        const card = document.createElement('div');
-        card.className = 'product-card';
-        
-        // support 필드 처리
-        const supportText = product.support === 'O' ? '지원금O' : 
-                          product.support === 'X' ? '지원금X' :
-                          product.support === '공시지원' ? '공시지원' : 
-                          product.support === '선택약정' ? '선택약정' : 
-                          product.support;
-        
-        card.innerHTML = `
-            <div class="product-header">
-                <div class="brand-icon ${brandInfo.class}">${brandInfo.icon}</div>
-                <div class="product-info">
-                    <h4>${product.model}</h4>
-                    <div class="product-meta">
-                        <span class="meta-tag">${product.carrier}</span>
-                        <span class="meta-tag">${product.type}</span>
-                        <span class="meta-tag">${supportText}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="price-section">
-                <div class="original-price">
-                    <span class="price-original">${formatKRW(originPrice)}</span>
-                    ${discountRate > 0 ? `<span class="discount-badge">${discountRate}% 할인</span>` : ''}
-                </div>
-                ${discount > 0 ? `<div class="discount-amount">- ${formatKRW(discount)} 할인</div>` : ''}
-            </div>
-            
-            <div class="final-price">
-                <div class="price-label">월 납부금 (기기값 + 요금제)</div>
-                <div class="price-value">${formatKRW(product.total)}</div>
-            </div>
-        `;
-        
-        card.addEventListener('click', () => {
             const params = new URLSearchParams({
                 model: product.model || "",
                 carrier: product.carrier || "",
@@ -382,197 +782,64 @@
                 installment: product.installment || 0,
                 total: product.total || 0
             });
-            window.open('https://nofee.team/ai?' + params.toString(), '_blank');
-        });
-        
-        return card;
-    }
+            
+            window.open(state.config.urls.product + '?' + params.toString(), '_blank');
+        },
 
-    // 🏆 베스트 상품 로드
-    async function loadBestProducts() {
-        const loadingElement = document.getElementById('productsLoading');
-        const gridElement = document.getElementById('productsGrid');
-        
-        if (!loadingElement || !gridElement) {
-            console.error('상품 표시 요소를 찾을 수 없습니다');
-            return;
-        }
-        
-        try {
-            console.log('상품 데이터 로드 시작...');
-            const response = await fetch(PRODUCTS_DATA_URL);
+        handleBrandClick(brandName) {
+            if (!state.config?.urls?.brand) return;
             
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('전체 상품 데이터 로드 완료:', data.length, '개');
-            
-            // 데이터 샘플 확인
-            if (data.length > 0) {
-                console.log('첫 번째 상품 데이터:', data[0]);
-                console.log('브랜드별 상품 수:');
-                const brandCounts = {};
-                data.forEach(p => {
-                    brandCounts[p.brand] = (brandCounts[p.brand] || 0) + 1;
-                });
-                console.log(brandCounts);
-                
-                // principal 값 분포 확인
-                const negativeCount = data.filter(p => p.principal < 0).length;
-                const zeroCount = data.filter(p => p.principal === 0).length;
-                const positiveCount = data.filter(p => p.principal > 0).length;
-                console.log(`principal 분포 - 음수: ${negativeCount}, 0: ${zeroCount}, 양수: ${positiveCount}`);
-                
-                // 처음 5개 상품의 모델명 확인
-                console.log('상위 5개 상품 모델명:');
-                data.slice(0, 5).forEach(p => {
-                    console.log(`- ${p.model} (${p.brand})`);
-                });
-            }
-            
-            allProducts = data;
-            
-            // 상품 필터링 및 정렬
-            const filteredProducts = data
-                .filter(product => {
-                    // 브랜드 필터링 - 영문 브랜드명 처리
-                    const brandLower = product.brand.toLowerCase();
-                    if (!['samsung', 'apple', '삼성', '애플'].includes(brandLower) && 
-                        !['Samsung', 'Apple', '삼성', '애플'].includes(product.brand)) {
-                        return false;
-                    }
-                    
-                    // 총액이 너무 낮은 상품 제외
-                    if (product.total < 30000) {
-                        return false;
-                    }
-                    
-                    return true;
-                })
-                .map(product => {
-                    const { discountRate } = calculateDiscount(product.model, product.principal);
-                    return { ...product, discountRate };
-                })
-                .sort((a, b) => {
-                    // 할인율이 높은 순으로 정렬 (할인이 없거나 추가비용인 경우는 뒤로)
-                    if (a.discountRate === 0 && b.discountRate === 0) {
-                        // 둘 다 할인이 없으면 total이 낮은 순
-                        return a.total - b.total;
-                    }
-                    return b.discountRate - a.discountRate;
-                });
-            
-            console.log('필터링된 상품:', filteredProducts.length, '개');
-            if (filteredProducts.length > 0) {
-                console.log('필터링된 상품 중 상위 3개:');
-                filteredProducts.slice(0, 3).forEach(p => {
-                    console.log(`- ${p.model} (${p.brand}) - principal: ${p.principal}, 할인율: ${p.discountRate}%`);
-                });
-            }
-            
-            // 각 브랜드에서 최고 할인 상품 우선, 할인이 없으면 가격이 낮은 상품 선택
-            const samsungProducts = filteredProducts
-                .filter(p => p.brand.toLowerCase() === 'samsung' || p.brand === '삼성')
-                .slice(0, 2);
-                
-            const appleProducts = filteredProducts
-                .filter(p => p.brand.toLowerCase() === 'apple' || p.brand === '애플')
-                .slice(0, 2);
-            
-            const bestProducts = [...samsungProducts, ...appleProducts];
-            console.log('베스트 상품 선정:', bestProducts.length, '개');
-            if (bestProducts.length > 0) {
-                console.log('선정된 베스트 상품:');
-                bestProducts.forEach((p, i) => {
-                    console.log(`${i+1}. ${p.model} - ${formatKRW(p.total)}`);
-                });
-            }
-            
-            // 로딩 숨기고 그리드 표시
-            loadingElement.style.display = 'none';
-            gridElement.style.display = 'grid';
-            
-            // 상품 카드 생성
-            gridElement.innerHTML = '';
-            bestProducts.forEach((product, index) => {
-                console.log(`상품 ${index + 1}:`, product.model, '할인율:', product.discountRate + '%');
-                const card = createProductCard(product);
-                gridElement.appendChild(card);
-            });
-            
-            // 브랜드 섹션 통계 업데이트
-            updateBrandSection();
-            
-        } catch (error) {
-            console.error('상품 데이터 로딩 실패:', error);
-            loadingElement.innerHTML = `
-                <div style="text-align: center; padding: 40px 20px; color: var(--gray-500);">
-                    <p>⚠️ 상품을 불러올 수 없어요</p>
-                    <p style="font-size: 14px; margin-top: 8px;">에러: ${error.message}</p>
-                    <button onclick="location.reload()" style="margin-top: 12px; padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer;">다시 시도</button>
-                </div>
-            `;
-        }
-    }
+            const url = new URL(state.config.urls.brand);
+            url.searchParams.set('brand', brandName);
+            window.open(url.toString(), '_blank');
+        },
 
-    // 📱 리뷰 데이터 및 렌더링
-    async function loadReviews() {
-        const reviewsScroll = document.getElementById('reviewsScroll');
-        
-        if (!reviewsScroll) {
-            console.error('리뷰 스크롤 요소를 찾을 수 없습니다');
-            return;
-        }
-        
-        try {
-            console.log('리뷰 데이터 로드 시작...');
-            const response = await fetch(REVIEWS_DATA_URL);
+        // 배너 슬라이더 메서드들
+        goToBannerSlide(index) {
+            state.currentBannerIndex = index;
+            const track = document.getElementById('bannerTrack');
+            const indicators = document.querySelectorAll('#bannerIndicators .indicator');
             
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            if (track) {
+                track.style.transform = `translateX(-${state.currentBannerIndex * 100}%)`;
             }
             
-            const reviews = await response.json();
-            console.log('리뷰 데이터 로드 완료:', reviews.length, '개');
-            
-            reviewsScroll.innerHTML = '';
-            
-            reviews.forEach(review => {
-                const stars = '⭐'.repeat(Math.floor(review.rating));
-                
-                const reviewCard = document.createElement('div');
-                reviewCard.className = 'review-card';
-                
-                // 하이라이트 처리
-                let comment = review.comment;
-                if (review.highlight) {
-                    comment = comment.replace(review.highlight, `<span class='review-highlight'>${review.highlight}</span>`);
-                }
-                
-                reviewCard.innerHTML = `
-                    <div class="review-header">
-                        <div class="reviewer-avatar">${review.initial}</div>
-                        <div class="reviewer-info">
-                            <h5>${review.name}</h5>
-                            <div class="review-rating">${stars} ${review.rating}</div>
-                        </div>
-                    </div>
-                    <div class="review-product">${review.product}</div>
-                    <div class="review-text">${comment}</div>
-                `;
-                
-                reviewsScroll.appendChild(reviewCard);
+            indicators.forEach((indicator, i) => {
+                indicator.classList.toggle('active', i === state.currentBannerIndex);
             });
+        },
+
+        nextBannerSlide() {
+            const nextIndex = (state.currentBannerIndex + 1) % state.banners.length;
+            this.goToBannerSlide(nextIndex);
+        },
+
+        startBannerAutoSlide() {
+            if (state.banners.length > 1) {
+                state.bannerInterval = setInterval(() => {
+                    this.nextBannerSlide();
+                }, 5000);
+            }
+        },
+
+        stopBannerAutoSlide() {
+            if (state.bannerInterval) {
+                clearInterval(state.bannerInterval);
+                state.bannerInterval = null;
+            }
+        },
+
+        // 리뷰 자동 스크롤
+        startReviewAutoScroll() {
+            const reviewsScroll = document.getElementById('reviewsScroll');
+            if (!reviewsScroll) return;
             
-            // 자동 스크롤 기능
             let scrollPosition = 0;
-            const scrollStep = 296;
+            const scrollStep = 320;
             let autoScrollInterval;
             let userInteracting = false;
             
-            function autoScroll() {
+            const autoScroll = () => {
                 const maxScroll = reviewsScroll.scrollWidth - reviewsScroll.clientWidth;
                 
                 if (scrollPosition >= maxScroll) {
@@ -585,375 +852,151 @@
                     left: scrollPosition,
                     behavior: 'smooth'
                 });
-            }
+            };
             
-            function startAutoScroll() {
+            const startAuto = () => {
                 autoScrollInterval = setInterval(() => {
-                    if (!userInteracting) {
-                        autoScroll();
-                    }
-                }, 3000);
-            }
+                    if (!userInteracting) autoScroll();
+                }, 4000);
+            };
             
-            function stopAutoScroll() {
+            const stopAuto = () => {
                 if (autoScrollInterval) {
                     clearInterval(autoScrollInterval);
                     autoScrollInterval = null;
                 }
-            }
+            };
             
-            // 사용자 인터랙션 감지
-            reviewsScroll.addEventListener('touchstart', () => {
-                userInteracting = true;
-                stopAutoScroll();
-            }, { passive: true });
+            // 이벤트 리스너
+            ['touchstart', 'mousedown'].forEach(event => {
+                reviewsScroll.addEventListener(event, () => {
+                    userInteracting = true;
+                    stopAuto();
+                }, { passive: true });
+            });
             
-            reviewsScroll.addEventListener('touchend', () => {
-                userInteracting = false;
-                setTimeout(startAutoScroll, 2000);
-            }, { passive: true });
+            ['touchend', 'mouseup'].forEach(event => {
+                reviewsScroll.addEventListener(event, () => {
+                    userInteracting = false;
+                    setTimeout(startAuto, 3000);
+                }, { passive: true });
+            });
             
             reviewsScroll.addEventListener('mouseenter', () => {
                 userInteracting = true;
-                stopAutoScroll();
+                stopAuto();
             });
             
             reviewsScroll.addEventListener('mouseleave', () => {
                 userInteracting = false;
-                setTimeout(startAutoScroll, 1000);
+                setTimeout(startAuto, 1000);
             });
             
-            startAutoScroll();
+            startAuto();
+        },
+
+        // 애니메이션 초기화
+        initAnimations() {
+            const sections = document.querySelectorAll('.nofee-section');
             
-            // 페이지 가시성 변경 시 처리
+            if ('IntersectionObserver' in window) {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach((entry) => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                        }
+                    });
+                }, {
+                    threshold: 0.1,
+                    rootMargin: '0px 0px -50px 0px'
+                });
+                
+                sections.forEach(section => {
+                    observer.observe(section);
+                });
+            } else {
+                sections.forEach(section => {
+                    section.classList.add('visible');
+                });
+            }
+        },
+
+        // 이벤트 리스너 초기화
+        initEventListeners() {
+            // 페이지 가시성 변경 처리
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
-                    stopAutoScroll();
-                } else if (!userInteracting) {
-                    startAutoScroll();
+                    this.stopBannerAutoSlide();
+                } else {
+                    this.startBannerAutoSlide();
                 }
             });
-            
-        } catch (error) {
-            console.error('리뷰 로딩 실패:', error);
-            reviewsScroll.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--gray-500);">리뷰를 불러올 수 없습니다.</div>';
-        }
-    }
 
-    // 🏢 브랜드 통계 계산
-    function calculateBrandStats() {
-        const brandStats = {
-            '삼성': { maxDiscount: 0, popularModel: '', count: 0, maxDiscountModel: '' },
-            '애플': { maxDiscount: 0, popularModel: '', count: 0, maxDiscountModel: '' }
-        };
-
-        if (allProducts.length === 0) {
-            console.log('상품 데이터가 없어 브랜드 통계를 계산할 수 없습니다');
-            return brandStats;
-        }
-
-        // 브랜드별 통계 계산
-        allProducts.forEach(product => {
-            // 영문 브랜드명을 한글로 변환
-            let brand = product.brand;
-            if (brand && brand.toLowerCase() === 'samsung') {
-                brand = '삼성';
-            } else if (brand && brand.toLowerCase() === 'apple') {
-                brand = '애플';
-            }
-            
-            if (brand === '삼성' || brand === '애플') {
-                const { discountRate } = calculateDiscount(product.model, product.principal);
-                
-                if (discountRate > brandStats[brand].maxDiscount) {
-                    brandStats[brand].maxDiscount = discountRate;
-                    brandStats[brand].maxDiscountModel = product.model;
+            // 키보드 접근성
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    // 필요시 모달 닫기 등
                 }
-                
-                // 가장 많이 나타나는 모델을 popularModel로 설정
-                if (!brandStats[brand].popularModel || discountRate > 0) {
-                    brandStats[brand].popularModel = product.model;
-                }
-                
-                brandStats[brand].count++;
-            }
-        });
-
-        console.log('브랜드 통계:');
-        console.log('삼성 -', brandStats['삼성']);
-        console.log('애플 -', brandStats['애플']);
-        
-        return brandStats;
-    }
-
-    // 🏢 브랜드 섹션 업데이트
-    async function updateBrandSection() {
-        const brandGrid = document.querySelector('.brand-grid');
-        if (!brandGrid) {
-            console.error('브랜드 그리드를 찾을 수 없습니다');
-            return;
-        }
-
-        const brandStats = calculateBrandStats();
-
-        try {
-            // brandsData가 이미 로드되어 있으면 사용
-            if (brandsData && Object.keys(brandsData).length > 0) {
-                brandGrid.innerHTML = '';
-                
-                ['삼성', '애플'].forEach(brandName => {
-                    const brand = brandsData[brandName];
-                    if (!brand) return;
-                    
-                    const stats = brandStats[brandName];
-                    const popularModel = stats.popularModel || brand.defaultModel || '';
-                    const maxDiscount = stats.maxDiscount || brand.defaultDiscount || 0;
-                    
-                    const brandCard = document.createElement('div');
-                    brandCard.className = 'brand-card';
-                    brandCard.onclick = () => selectBrand(brandName);
-                    
-                    brandCard.innerHTML = `
-                        <div class="brand-logo">
-                            <img src="${brand.logo}" alt="${brandName}" loading="lazy">
-                        </div>
-                        <h4>${brandName}</h4>
-                        <p>${brand.description}</p>
-                        <div class="brand-stats">
-                            <div class="stat-row">
-                                <span class="stat-label">인기 모델</span>
-                                <span class="stat-value">${popularModel.replace('갤럭시 ', '')}</span>
-                            </div>
-                            <div class="stat-row">
-                                <span class="stat-label">최대 할인</span>
-                                <span class="stat-value highlight">${maxDiscount}%</span>
-                            </div>
-                        </div>
-                        <div class="brand-arrow">›</div>
-                    `;
-                    
-                    brandGrid.appendChild(brandCard);
-                });
-            } else {
-                // brandsData가 없으면 기본 브랜드 카드 생성
-                console.log('브랜드 데이터 없음, 기본값 사용');
-                brandGrid.innerHTML = '';
-                
-                ['삼성', '애플'].forEach(brandName => {
-                    const stats = brandStats[brandName];
-                    const brandCard = document.createElement('div');
-                    brandCard.className = 'brand-card';
-                    brandCard.onclick = () => selectBrand(brandName);
-                    
-                    brandCard.innerHTML = `
-                        <h4>${brandName}</h4>
-                        <p>${brandName === '삼성' ? '갤럭시 시리즈' : '아이폰 시리즈'}</p>
-                        <div class="brand-stats">
-                            <div class="stat-row">
-                                <span class="stat-label">인기 모델</span>
-                                <span class="stat-value">${stats.popularModel}</span>
-                            </div>
-                            <div class="stat-row">
-                                <span class="stat-label">최대 할인</span>
-                                <span class="stat-value highlight">${stats.maxDiscount}%</span>
-                            </div>
-                        </div>
-                        <div class="brand-arrow">›</div>
-                    `;
-                    
-                    brandGrid.appendChild(brandCard);
-                });
-            }
-        } catch (error) {
-            console.error('브랜드 섹션 업데이트 실패:', error);
-        }
-    }
-
-    // 🏢 브랜드 선택 함수
-    function selectBrand(brand) {
-        const clickedCard = event.currentTarget;
-        if (clickedCard) {
-            clickedCard.style.transform = 'translateY(-2px) scale(0.98)';
-            clickedCard.style.transition = 'transform 0.15s ease';
-        }
-
-        setTimeout(() => {
-            const url = new URL('https://nofee.team/more');
-            url.searchParams.set('brand', brand);
-            window.open(url.toString(), '_blank');
-        }, 150);
-    }
-
-    // 애니메이션 초기화
-    function initAnimations() {
-        const sections = document.querySelectorAll('.nofee-section');
-        
-        if ('IntersectionObserver' in window) {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach((entry, index) => {
-                    if (entry.isIntersecting) {
-                        setTimeout(() => {
-                            entry.target.classList.add('visible');
-                        }, index * 100);
-                    }
-                });
-            }, {
-                threshold: 0.1,
-                rootMargin: '0px 0px -50px 0px'
             });
-            
-            sections.forEach(section => {
-                observer.observe(section);
+
+            // 에러 발생 시 처리
+            window.addEventListener('error', (e) => {
+                console.error('Runtime error:', e.error);
             });
-        } else {
-            sections.forEach(section => {
-                section.classList.add('visible');
+
+            window.addEventListener('unhandledrejection', (e) => {
+                console.error('Unhandled promise rejection:', e.reason);
             });
+        },
+
+        showError(message) {
+            utils.hideSection('initialLoading');
+            utils.setElementContent('#errorMessage', message);
+            utils.showSection('errorSection');
         }
-    }
-
-    // AI CTA 클릭 이벤트 설정
-    function initAICTA() {
-        const aiCTA = document.querySelector('.ai-cta-card');
-        if (aiCTA) {
-            aiCTA.addEventListener('click', () => {
-                window.open('https://www.nofee.team/ai', '_blank');
-            });
-        }
-    }
-
-    // 로드 더 버튼 이벤트 설정
-    function initLoadMoreButton() {
-        const loadMoreBtn = document.querySelector('.load-more-btn');
-        if (loadMoreBtn) {
-            loadMoreBtn.addEventListener('click', () => {
-                window.open('https://nofee.team/more', '_blank');
-            });
-        }
-    }
-
-    // 에러 핸들링
-    function handleError(error, context = '') {
-        console.error(`Error in ${context}:`, error);
-    }
-
-    // 디바운스 함수
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-
-    // 성능 최적화
-    function optimizePerformance() {
-        // 이미지 지연 로딩
-        if ('loading' in HTMLImageElement.prototype) {
-            const images = document.querySelectorAll('img[data-src]');
-            images.forEach(img => {
-                img.src = img.dataset.src;
-                img.removeAttribute('data-src');
-            });
-        }
-
-        // 스크롤 이벤트 최적화
-        const debouncedScroll = debounce(() => {
-            const scrollTop = window.pageYOffset;
-            const documentHeight = document.documentElement.scrollHeight - window.innerHeight;
-            const scrollPercent = (scrollTop / documentHeight) * 100;
-            
-            if (scrollPercent > 10) {
-                document.body.classList.add('scrolled');
-            } else {
-                document.body.classList.remove('scrolled');
-            }
-        }, 16);
-        
-        window.addEventListener('scroll', debouncedScroll, { passive: true });
-    }
-
-    // 접근성 개선
-    function improveAccessibility() {
-        // 키보드 네비게이션 지원
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                const modals = document.querySelectorAll('.modal.active');
-                modals.forEach(modal => modal.classList.remove('active'));
-            }
-        });
-
-        // 포커스 표시 개선
-        document.addEventListener('focusin', (e) => {
-            e.target.classList.add('focus-visible');
-        });
-        
-        document.addEventListener('focusout', (e) => {
-            e.target.classList.remove('focus-visible');
-        });
-    }
+    };
 
     // 🚀 메인 초기화 함수
     async function initNofeeMain() {
         try {
-            console.log('노피 메인페이지 초기화 시작...');
+            console.log('🚀 노피 메인페이지 v3.0 초기화 시작 (완전 데이터 의존형)');
             
-            // 초기 데이터 로드
-            await loadInitialData();
+            // 모든 데이터 로드 및 UI 초기화
+            await dataLoader.loadAllData();
             
-            // 배너 초기화
-            await initBanner();
+            // 전역 함수 등록 (웹플로우 호환성)
+            window.nofeeState = state;
+            window.selectBrand = (brand) => dataLoader.handleBrandClick(brand);
             
-            // 비동기 데이터 로드
-            await Promise.all([
-                loadBestProducts(),
-                loadReviews()
-            ]);
+            console.log('✅ 노피 메인페이지 v3.0 초기화 완료');
             
-            // 나머지 초기화
-            initAnimations();
-            initAICTA();
-            initLoadMoreButton();
-            optimizePerformance();
-            improveAccessibility();
-            
-            // 전역 함수로 브랜드 선택 함수 등록
-            window.selectBrand = selectBrand;
-            
-            console.log('노피 메인페이지 초기화 완료');
+            // 초기화 완료 이벤트
+            window.dispatchEvent(new CustomEvent('nofeeMainReady', {
+                detail: { 
+                    version: '3.0', 
+                    timestamp: Date.now(),
+                    dataLoaded: state.isDataLoaded,
+                    errors: state.loadingErrors
+                }
+            }));
             
         } catch (error) {
-            handleError(error, 'Main initialization');
+            console.error('❌ Critical initialization failure:', error);
+            dataLoader.showError('시스템 초기화에 실패했습니다');
         }
     }
 
-    // DOM 준비 확인 및 초기화
+    // 🎯 DOM 준비 확인 및 초기화
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initNofeeMain);
     } else {
-        // DOM이 이미 로드된 경우
-        initNofeeMain();
+        setTimeout(initNofeeMain, 0);
     }
 
-    // 전역 에러 핸들러
-    window.addEventListener('error', (e) => {
-        handleError(e.error, 'Global');
-    });
-
-    // Promise 에러 핸들러
-    window.addEventListener('unhandledrejection', (e) => {
-        handleError(e.reason, 'Promise');
-        e.preventDefault();
-    });
-
-    // 페이지 언로드 시 정리
+    // 정리 작업
     window.addEventListener('beforeunload', () => {
-        if (bannerInterval) {
-            clearInterval(bannerInterval);
+        if (state.bannerInterval) {
+            clearInterval(state.bannerInterval);
         }
     });
 
