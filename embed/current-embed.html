@@ -1,70 +1,147 @@
-<!-- 노피 최근 본 상품 페이지 - Webflow Embed Code -->
-<!-- GitHub에서 스타일과 스크립트를 불러옵니다 -->
-<link rel="stylesheet" href="https://jacob-po.github.io/nofee-webflow/styles/current.css?v=1.0.0">
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>최근 본 상품 | NOFEE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: #f9f9fb;
+      margin: 0;
+      padding: 24px 16px 80px;
+    }
+    h2 {
+      font-size: 20px;
+      margin-bottom: 24px;
+      color: #111;
+      font-weight: 700;
+    }
+    .viewed-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .viewed-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+    .viewed-card:hover {
+      box-shadow: 0 8px 20px rgba(92, 39, 254, 0.12);
+      transform: translateY(-3px);
+    }
+    .title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #111;
+    }
+    .meta {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 4px;
+    }
+    .price {
+      font-size: 15px;
+      font-weight: 700;
+      color: #5c27fe;
+      margin-bottom: 4px;
+    }
+    .time {
+      font-size: 12px;
+      color: #999;
+    }
+    .empty {
+      font-size: 15px;
+      text-align: center;
+      color: #999;
+      padding: 40px 0;
+    }
+    @media (max-width: 768px) {
+      .viewed-list {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
 
-<!-- 최근 본 상품 페이지 컨텐츠 -->
-<div class="container">
-    <!-- 페이지 헤더 -->
-    <div class="page-header">
-        <h1 class="page-title">최근 본 상품</h1>
-        <p class="page-subtitle">고객님이 최근에 확인하신 상품들입니다</p>
-    </div>
-    
-    <!-- 컨트롤 영역 -->
-    <div class="controls">
-        <div class="controls-left">
-            <!-- 정렬 선택 -->
-            <div class="select-wrapper">
-                <label class="select-label">정렬</label>
-                <select id="sortSelect">
-                    <option value="recent">최신순</option>
-                    <option value="name">이름순</option>
-                    <option value="price">낮은 가격순</option>
-                    <option value="priceDesc">높은 가격순</option>
-                </select>
-            </div>
-            
-            <!-- 브랜드 필터 -->
-            <div class="select-wrapper">
-                <label class="select-label">브랜드</label>
-                <select id="brandFilter">
-                    <option value="all">전체</option>
-                    <option value="삼성">삼성</option>
-                    <option value="애플">애플</option>
-                </select>
-            </div>
-            
-            <!-- 통계 정보 -->
-            <div class="stats-info">
-                총 <strong id="totalCount">0</strong>개 중 <strong id="filteredCount">0</strong>개 표시
-            </div>
-        </div>
-        
-        <div class="controls-right">
-            <!-- 새로고침 버튼 -->
-            <button class="btn btn-secondary" id="refreshBtn">
-                <span>🔄</span>
-                <span>새로고침</span>
-            </button>
-            
-            <!-- 전체 삭제 버튼 -->
-            <button class="btn btn-danger" id="clearAllBtn">
-                <span>🗑️</span>
-                <span>전체 삭제</span>
-            </button>
-        </div>
-    </div>
-    
-    <!-- 상품 리스트 -->
-    <div class="viewed-list" id="productList">
-        <!-- 상품들이 JavaScript로 동적 생성됩니다 -->
-    </div>
-    
-    <!-- 페이지네이션 -->
-    <div class="pagination" id="pagination" style="display: none;">
-        <!-- 페이지 버튼들이 JavaScript로 동적 생성됩니다 -->
-    </div>
-</div>
+<h2>최근 본 상품</h2>
+<div class="viewed-list" id="recentList">로딩 중...</div>
 
-<!-- GitHub에서 JavaScript 로드 -->
-<script src="https://jacob-po.github.io/nofee-webflow/pages/current.js?v=1.0.0"></script>
+<script>
+  const list = document.getElementById('recentList');
+  const history = JSON.parse(localStorage.getItem('viewedProducts') || '[]');
+
+  function formatTime(timestamp) {
+    const d = new Date(timestamp);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+  }
+
+  fetch('https://jacob-po.github.io/products-data/products.json')
+    .then(res => res.json())
+    .then(products => {
+      if (!history.length) {
+        list.innerHTML = '<div class="empty">최근 본 상품이 없습니다.</div>';
+        return;
+      }
+
+      list.innerHTML = '';
+
+      history.forEach(viewed => {
+        // 제품 전체 데이터 중에서 매칭되는 항목 찾기
+        const matched = products.find(p =>
+          p.model === viewed.model &&
+          p.carrier === viewed.carrier &&
+          p.type === viewed.type &&
+          p.support === viewed.support
+        );
+
+        if (!matched) return;
+
+        const card = document.createElement('div');
+        card.className = 'viewed-card';
+        card.innerHTML = `
+          <div class="title">${matched.model}</div>
+          <div class="meta">${matched.carrier} · ${matched.type} · ${matched.support}</div>
+          <div class="price">₩${Number(matched.total).toLocaleString()} /월</div>
+          <div class="time">방문일: ${formatTime(viewed.time)}</div>
+        `;
+        card.onclick = () => {
+          const params = new URLSearchParams({
+            model: matched.model || '',
+            carrier: matched.carrier || '',
+            type: matched.type || '',
+            support: matched.support || '',
+            brand: matched.brand || '',
+            principal: matched.principal || 0,
+            plan_name: matched.plan_name || '',
+            change_plan: matched.change_plan || '',
+            contract_period: matched.contract_period || '',
+            plan_period: matched.plan_period || '',
+            plan: matched.plan || 0,
+            installment: matched.installment || 0,
+            total: matched.total || 0
+          }).toString();
+          window.location.href = 'https://phone.nofee.team/apply?' + params;
+        };
+        list.appendChild(card);
+      });
+    })
+    .catch(err => {
+      list.innerHTML = `<div class="empty">상품 데이터를 불러오는 데 실패했습니다.</div>`;
+      console.error(err);
+    });
+</script>
+
+</body>
+</html>
