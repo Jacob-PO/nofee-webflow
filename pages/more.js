@@ -1,7 +1,8 @@
-// 🚀 노피 상품검색 - 안정적인 버전 v2.1
+// 🚀 노피 상품검색 - GitHub 관리용 v3.1
 // GitHub: https://github.com/Jacob-PO/nofee-webflow/blob/main/pages/more.js
+// 시스템 기본 Select + 상품 클릭 AI 페이지 이동 기능
 
-console.log('🔥 more.js v2.1 로드 시작');
+console.log('🔥 more.js v3.1 로드 시작 - 상품 클릭 AI 이동 포함');
 
 // 🎯 즉시 실행 함수로 전역 오염 방지
 (function() {
@@ -96,6 +97,35 @@ console.log('🔥 more.js v2.1 로드 시작');
             const discountRate = Math.round((discount / origin) * 100);
             
             return { discount, discountRate };
+        },
+        
+        // 🤖 AI 페이지 이동을 위한 상품 데이터 준비
+        prepareProductDataForAI: (product) => {
+            const brandInfo = utils.getBrandInfo(product.brand);
+            const originPrice = product.originPrice || utils.getOriginPrice(product.model);
+            const { discount, discountRate } = utils.calculateDiscount(originPrice, product.principal);
+            
+            return {
+                // 기본 정보
+                model: product.model || '',
+                carrier: product.carrier || '',
+                brand: brandInfo.displayName || '',
+                type: product.type || '',
+                support: product.support || '',
+                
+                // 가격 정보
+                total: product.total.toString() || '0',
+                plan: product.plan.toString() || '0',
+                installment: product.installment.toString() || '0',
+                originPrice: originPrice.toString() || '0',
+                principal: product.principal.toString() || '0',
+                discount: discount.toString() || '0',
+                discountRate: discountRate.toString() || '0',
+                
+                // 추가 메타데이터
+                from: 'search',
+                timestamp: Date.now().toString()
+            };
         }
     };
     
@@ -177,9 +207,9 @@ console.log('🔥 more.js v2.1 로드 시작');
             if (!productList) return;
             
             productList.innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p>상품 데이터를 불러오는 중...</p>
+                <div class="loading-state" style="grid-column: 1 / -1;">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">상품 데이터를 불러오는 중...</div>
                 </div>
             `;
         },
@@ -189,20 +219,11 @@ console.log('🔥 more.js v2.1 로드 시작');
             if (!productList) return;
             
             productList.innerHTML = `
-                <div class="no-results">
-                    <div class="no-results-icon">⚠️</div>
-                    <h3>오류가 발생했습니다</h3>
-                    <p>${message}</p>
-                    <button onclick="location.reload()" style="
-                        margin-top: 20px;
-                        padding: 12px 24px;
-                        background: #5c27fe;
-                        color: white;
-                        border: none;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        font-weight: 600;
-                    ">새로고침</button>
+                <div class="error-state" style="grid-column: 1 / -1;">
+                    <div class="error-icon">⚠️</div>
+                    <h3 class="error-title">오류가 발생했습니다</h3>
+                    <p class="error-message">${message}</p>
+                    <button class="retry-button" onclick="location.reload()">새로고침</button>
                 </div>
             `;
         },
@@ -221,28 +242,36 @@ console.log('🔥 more.js v2.1 로드 시작');
             // 상품이 없는 경우
             if (appState.filteredProducts.length === 0) {
                 productList.innerHTML = `
-                    <div class="no-results">
-                        <div class="no-results-icon">🔍</div>
-                        <h3>검색 결과가 없습니다</h3>
-                        <p>다른 조건으로 검색해보세요</p>
+                    <div class="error-state" style="grid-column: 1 / -1;">
+                        <div class="error-icon">🔍</div>
+                        <h3 class="error-title">검색 결과가 없습니다</h3>
+                        <p class="error-message">다른 조건으로 검색해보세요</p>
                     </div>
                 `;
                 this.updateLoadMoreButton(false);
                 return;
             }
             
-            // 상품 카드 생성
+            // 상품 카드 생성 (클릭 이벤트용 데이터 속성 추가)
             productList.innerHTML = productsToShow.map((product, index) => {
                 const brandInfo = utils.getBrandInfo(product.brand);
                 const originPrice = product.originPrice || utils.getOriginPrice(product.model);
                 const { discount, discountRate } = utils.calculateDiscount(originPrice, product.principal);
                 
+                // AI 페이지로 전달할 데이터 준비
+                const aiData = utils.prepareProductDataForAI(product);
+                const dataAttributes = Object.entries(aiData)
+                    .map(([key, value]) => `data-${key}="${encodeURIComponent(value)}"`)
+                    .join(' ');
+                
                 return `
-                    <div class="product-card" style="animation-delay: ${index * 0.05}s;">
+                    <div class="product-card" 
+                         style="animation-delay: ${index * 0.05}s;"
+                         ${dataAttributes}>
                         <div class="product-header">
                             <div class="brand-icon ${brandInfo.class}">${brandInfo.icon}</div>
                             <div class="product-info">
-                                <h3>${product.model}</h3>
+                                <h3 class="product-title">${product.model}</h3>
                                 <div class="product-meta">
                                     <span class="meta-tag">${product.carrier}</span>
                                     <span class="meta-tag">${brandInfo.displayName}</span>
@@ -252,30 +281,32 @@ console.log('🔥 more.js v2.1 로드 시작');
                             </div>
                         </div>
                         
-                        <div class="price-breakdown">
-                            <div class="price-row">
-                                <span>기기값</span>
-                                <span>${utils.formatKRW(originPrice)}</span>
+                        <div class="price-section">
+                            <div class="price-breakdown">
+                                <div class="price-row">
+                                    <span>기기값</span>
+                                    <span>${utils.formatKRW(originPrice)}</span>
+                                </div>
+                                <div class="price-row">
+                                    <span>할부원금</span>
+                                    <span>${utils.formatKRW(product.installment)}</span>
+                                </div>
+                                <div class="price-row">
+                                    <span>요금제</span>
+                                    <span>${utils.formatKRW(product.plan)}</span>
+                                </div>
+                                ${discount > 0 ? `
+                                <div class="price-row">
+                                    <span>지원금</span>
+                                    <span style="color: #e74c3c;">-${utils.formatKRW(discount)} (${discountRate}%)</span>
+                                </div>
+                                ` : ''}
                             </div>
-                            <div class="price-row">
-                                <span>할부원금</span>
-                                <span>${utils.formatKRW(product.installment)}</span>
+                            
+                            <div class="price-total">
+                                <div class="price-label">월 납부금</div>
+                                <div class="price-value">${utils.formatKRW(product.total)}</div>
                             </div>
-                            <div class="price-row">
-                                <span>요금제</span>
-                                <span>${utils.formatKRW(product.plan)}</span>
-                            </div>
-                            ${discount > 0 ? `
-                            <div class="price-row">
-                                <span>지원금</span>
-                                <span style="color: #e74c3c;">-${utils.formatKRW(discount)} (${discountRate}%)</span>
-                            </div>
-                            ` : ''}
-                        </div>
-                        
-                        <div class="price-total">
-                            <div class="price-label">월 납부금</div>
-                            <div class="price-value">${utils.formatKRW(product.total)}</div>
                         </div>
                     </div>
                 `;
@@ -284,6 +315,8 @@ console.log('🔥 more.js v2.1 로드 시작');
             // 더보기 버튼 업데이트
             const hasMore = productsToShow.length < appState.filteredProducts.length;
             this.updateLoadMoreButton(hasMore);
+            
+            console.log(`🎴 상품 카드 ${productsToShow.length}개 렌더링 완료`);
         },
         
         updateLoadMoreButton(hasMore) {
@@ -292,6 +325,7 @@ console.log('🔥 more.js v2.1 로드 시작');
             
             if (hasMore) {
                 loadMore.style.display = 'block';
+                loadMoreBtn.style.display = 'inline-block';
                 loadMoreBtn.disabled = false;
                 loadMoreBtn.textContent = '상품 더 보기';
             } else {
@@ -319,7 +353,7 @@ console.log('🔥 more.js v2.1 로드 시작');
                     filterTags.push(`
                         <div class="filter-tag">
                             ${label}
-                            <span class="remove" onclick="filterManager.removeFilter('${key}')">&times;</span>
+                            <span class="filter-remove" onclick="filterManager.removeFilter('${key}')">&times;</span>
                         </div>
                     `);
                 }
@@ -366,17 +400,26 @@ console.log('🔥 more.js v2.1 로드 시작');
             
             ui.renderProducts();
             ui.updateActiveFilters();
+            
+            console.log(`🔍 필터 적용 완료: ${filtered.length}개 상품`);
         },
         
         setFilter(category, value) {
             appState.filters[category] = value;
             this.applyFilters();
             
-            console.log(`🔍 필터 적용: ${category} = ${value}`);
+            console.log(`🔍 필터 설정: ${category} = ${value || '전체'}`);
         },
         
         removeFilter(category) {
             appState.filters[category] = '';
+            
+            // 해당 Select 요소 초기화
+            const selectElement = document.querySelector(`[data-category="${category}"]`);
+            if (selectElement) {
+                selectElement.value = '';
+            }
+            
             this.applyFilters();
             
             console.log(`🗑️ 필터 제거: ${category}`);
@@ -400,8 +443,6 @@ console.log('🔥 more.js v2.1 로드 시작');
                     filterManager.loadMore();
                 });
             }
-            
-            // 필터 드롭다운 (이미 HTML Embed에서 처리됨)
             
             console.log('🎮 이벤트 핸들러 초기화 완료');
         }
@@ -438,12 +479,12 @@ console.log('🔥 more.js v2.1 로드 시작');
     window.filterManager = filterManager;
     window.appState = appState;
     
-    // 🎯 외부에서 호출할 수 있는 필터 함수
+    // 🎯 외부에서 호출할 수 있는 필터 함수 (HTML의 Select에서 사용)
     window.applyFilter = function(category, value) {
         filterManager.setFilter(category, value);
     };
     
-    console.log('✅ more.js 모듈 로드 완료 - initProductSearch 함수 준비됨');
+    console.log('✅ more.js v3.1 모듈 로드 완료 - 상품 클릭 AI 이동 기능 포함');
     
 })();
 
