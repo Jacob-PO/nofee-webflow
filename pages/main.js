@@ -1,4 +1,4 @@
-// 🚀 노피 메인페이지 스크립트 v3.1 - 에러 핸들링 개선
+// 🚀 노피 메인페이지 스크립트 v4.0 - 창의적 기능 강화
 (function() {
     'use strict';
     
@@ -10,12 +10,19 @@
         banners: [],
         brands: {},
         models: {},
-        regions: [],
         selectedRegion: null,
         currentBannerIndex: 0,
         bannerInterval: null,
+        hotDealsInterval: null,
         isDataLoaded: false,
-        loadingErrors: []
+        loadingErrors: [],
+        currentHotDealIndex: 0,
+        analytics: {
+            totalProducts: 0,
+            avgDiscount: 0,
+            maxSavings: 0,
+            topBrands: []
+        }
     };
 
     // GitHub 저장소 설정
@@ -28,16 +35,19 @@
         config: `${GITHUB_BASE_URL}/data/config.json`,
         products: `${GITHUB_BASE_URL}/data/products.json`,
         reviews: `${GITHUB_BASE_URL}/data/review.json`,
-        banners: `${GITHUB_BASE_URL}/data/banner.json`, // 수정된 파일명
+        banners: `${GITHUB_BASE_URL}/data/banner.json`,
         brands: `${GITHUB_BASE_URL}/data/brands.json`,
-        models: `${GITHUB_BASE_URL}/data/models.json`,
-        regions: `${GITHUB_BASE_URL}/data/regions.json`
+        models: `${GITHUB_BASE_URL}/data/models.json`
     };
 
     // 🔧 유틸리티 함수들
     const utils = {
         formatKRW: (value) => {
             return Math.abs(Number(value)).toLocaleString("ko-KR") + "원";
+        },
+
+        formatNumber: (value) => {
+            return Math.abs(Number(value)).toLocaleString("ko-KR");
         },
 
         debounce: (func, wait) => {
@@ -90,6 +100,46 @@
                 section.style.display = 'none';
                 section.classList.remove('visible');
             }
+        },
+
+        // 텍스트에서 키워드 추출
+        extractKeywords: (text) => {
+            const stopWords = ['이', '가', '을', '를', '의', '에', '와', '과', '도', '는', '은', '이다', '있다', '없다', '하다', '되다', '그리고', '하지만', '그런데', '그래서'];
+            const words = text.replace(/[^\w\s가-힣]/g, '').split(/\s+/)
+                .filter(word => word.length > 1 && !stopWords.includes(word))
+                .map(word => word.toLowerCase());
+            
+            const frequency = {};
+            words.forEach(word => {
+                frequency[word] = (frequency[word] || 0) + 1;
+            });
+            
+            return Object.entries(frequency)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 10)
+                .map(([word]) => word);
+        },
+
+        // 감정 분석 (간단한 키워드 기반)
+        analyzeSentiment: (text) => {
+            const positiveWords = ['좋다', '만족', '빠르다', '친절', '저렴', '추천', '최고', '완벽', '훌륭', '감사'];
+            const negativeWords = ['나쁘다', '불만', '느리다', '불친절', '비싸다', '실망', '최악', '문제', '고장', '후회'];
+            
+            const lowerText = text.toLowerCase();
+            let positiveScore = 0;
+            let negativeScore = 0;
+            
+            positiveWords.forEach(word => {
+                if (lowerText.includes(word)) positiveScore++;
+            });
+            
+            negativeWords.forEach(word => {
+                if (lowerText.includes(word)) negativeScore++;
+            });
+            
+            if (positiveScore > negativeScore) return 'positive';
+            if (negativeScore > positiveScore) return 'negative';
+            return 'neutral';
         }
     };
 
@@ -120,8 +170,6 @@
         },
 
         async loadAllData() {
-            const loadingElement = document.getElementById('initialLoading');
-            
             try {
                 console.log('🚀 노피 데이터 로드 시작...');
                 
@@ -141,8 +189,7 @@
                 console.log('🔧 2단계: 코어 데이터 로드');
                 const coreDataResults = await Promise.allSettled([
                     this.fetchData(DATA_URLS.models, 'models', true).then(data => state.models = data || {}),
-                    this.fetchData(DATA_URLS.brands, 'brands', true).then(data => state.brands = data || {}),
-                    this.fetchData(DATA_URLS.regions, 'regions', true).then(data => state.regions = data || [])
+                    this.fetchData(DATA_URLS.brands, 'brands', true).then(data => state.brands = data || {})
                 ]);
                 
                 // 3단계: 컨텐츠 데이터 로드 (선택적)
@@ -152,6 +199,9 @@
                     this.fetchData(DATA_URLS.products, 'products', true).then(data => state.products = data || []),
                     this.fetchData(DATA_URLS.reviews, 'reviews', true).then(data => state.reviews = data || [])
                 ]);
+                
+                // 데이터 분석 수행
+                this.performDataAnalysis();
                 
                 // 로딩 결과 확인
                 const allResults = [...coreDataResults, ...contentDataResults];
@@ -174,6 +224,55 @@
                 console.error('❌ Critical data loading failed:', error);
                 this.showError('데이터를 불러오는데 실패했습니다');
             }
+        },
+
+        performDataAnalysis() {
+            if (state.products.length === 0) return;
+            
+            console.log('📊 데이터 분석 시작...');
+            
+            // 기본 통계 계산
+            state.analytics.totalProducts = state.products.length;
+            
+            // 할인율 계산
+            const discounts = state.products.map(product => {
+                const { discountRate } = this.calculateDiscount(product.model, product.principal);
+                return discountRate;
+            }).filter(rate => rate > 0);
+            
+            state.analytics.avgDiscount = discounts.length > 0 ? 
+                Math.round(discounts.reduce((sum, rate) => sum + rate, 0) / discounts.length) : 0;
+            
+            // 최대 절약 금액 계산
+            const savings = state.products.map(product => {
+                const { discount } = this.calculateDiscount(product.model, product.principal);
+                return discount;
+            });
+            
+            state.analytics.maxSavings = savings.length > 0 ? Math.max(...savings) : 0;
+            
+            // 브랜드별 통계
+            const brandStats = {};
+            state.products.forEach(product => {
+                const brand = product.brand;
+                if (!brandStats[brand]) {
+                    brandStats[brand] = { count: 0, totalDiscount: 0 };
+                }
+                brandStats[brand].count++;
+                const { discountRate } = this.calculateDiscount(product.model, product.principal);
+                brandStats[brand].totalDiscount += discountRate;
+            });
+            
+            state.analytics.topBrands = Object.entries(brandStats)
+                .map(([brand, stats]) => ({
+                    brand,
+                    count: stats.count,
+                    avgDiscount: Math.round(stats.totalDiscount / stats.count)
+                }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 3);
+            
+            console.log('📊 분석 완료:', state.analytics);
         },
 
         getDefaultConfig() {
@@ -204,10 +303,6 @@
                 reviews: {
                     title: "실시간 고객 후기",
                     subtitle: "실제 구매 고객들의 생생한 경험담"
-                },
-                brands: {
-                    title: "제조사별 상품",
-                    subtitle: "원하는 브랜드를 선택해 보세요"
                 },
                 urls: {
                     ai: "https://nofee.team/ai",
@@ -241,13 +336,12 @@
             try {
                 // 순차적으로 섹션 초기화 (에러가 발생해도 다음 섹션 계속)
                 await this.safeInit('Hero', () => this.initHeroSection());
-                await this.safeInit('Region', () => this.initRegionSection());
                 await this.safeInit('Banner', () => this.initBannerSection());
+                await this.safeInit('HotDeals', () => this.initHotDealsSection());
+                await this.safeInit('Analytics', () => this.initAnalyticsSection());
                 await this.safeInit('AI', () => this.initAISection());
                 await this.safeInit('Products', () => this.initProductsSection());
-                await this.safeInit('PriceInfo', () => this.initPriceInfoSection());
                 await this.safeInit('Reviews', () => this.initReviewsSection());
-                await this.safeInit('Brand', () => this.initBrandSection());
                 
                 // 애니메이션 및 인터랙션 초기화
                 this.initAnimations();
@@ -298,49 +392,6 @@
             }
             
             utils.showSection('heroSection');
-        },
-
-        async initRegionSection() {
-            if (!state.regions || state.regions.length === 0) {
-                console.log('⚠️ No regions data, skipping region section');
-                return;
-            }
-            
-            const regionGrid = document.getElementById('regionGrid');
-            if (!regionGrid) return;
-            
-            regionGrid.innerHTML = '';
-            
-            // 지역 데이터 처리
-            const regions = Array.isArray(state.regions) ? state.regions : [state.regions];
-            
-            regions.forEach(region => {
-                const regionItem = utils.createElement('div', 'region-item');
-                regionItem.textContent = region.name || region;
-                regionItem.dataset.regionId = region.id || region.name || region;
-                
-                regionItem.addEventListener('click', () => {
-                    // 이전 선택 제거
-                    regionGrid.querySelectorAll('.region-item').forEach(item => {
-                        item.classList.remove('selected');
-                    });
-                    
-                    // 새로운 선택
-                    regionItem.classList.add('selected');
-                    state.selectedRegion = region;
-                    
-                    console.log('📍 Region selected:', region);
-                    
-                    // 상품 필터링 업데이트 (필요시)
-                    if (state.isDataLoaded) {
-                        this.updateProductsForRegion();
-                    }
-                });
-                
-                regionGrid.appendChild(regionItem);
-            });
-            
-            utils.showSection('regionSection');
         },
 
         async initBannerSection() {
@@ -400,6 +451,105 @@
             
             this.startBannerAutoSlide();
             utils.showSection('bannerSection');
+        },
+
+        async initHotDealsSection() {
+            if (!state.products || state.products.length === 0) {
+                console.log('⚠️ No products data, skipping hot deals section');
+                return;
+            }
+            
+            // 할인율 높은 상품들을 HOT 딜로 선별
+            const hotDeals = state.products
+                .map(product => {
+                    const { discountRate } = this.calculateDiscount(product.model, product.principal);
+                    return { ...product, discountRate };
+                })
+                .filter(product => product.discountRate > 0)
+                .sort((a, b) => b.discountRate - a.discountRate)
+                .slice(0, 6); // 상위 6개만 선택
+            
+            if (hotDeals.length === 0) {
+                console.log('⚠️ No discounted products found');
+                return;
+            }
+            
+            // HOT 딜 카루셀 렌더링
+            this.renderHotDeals(hotDeals);
+            
+            // 타이머 시작
+            this.startHotDealsTimer();
+            
+            utils.showSection('hotDealsSection');
+        },
+
+        async initAnalyticsSection() {
+            if (!state.analytics || state.analytics.totalProducts === 0) {
+                console.log('⚠️ No analytics data available');
+                return;
+            }
+            
+            const analyticsGrid = document.getElementById('analyticsGrid');
+            if (!analyticsGrid) return;
+            
+            analyticsGrid.innerHTML = '';
+            
+            // 통계 카드들 생성
+            const stats = [
+                {
+                    icon: '📱',
+                    value: utils.formatNumber(state.analytics.totalProducts),
+                    label: '전체 상품',
+                    change: null
+                },
+                {
+                    icon: '💰',
+                    value: `${state.analytics.avgDiscount}%`,
+                    label: '평균 할인율',
+                    change: state.analytics.avgDiscount > 30 ? 'positive' : null
+                },
+                {
+                    icon: '🎯',
+                    value: utils.formatKRW(state.analytics.maxSavings),
+                    label: '최대 절약 금액',
+                    change: 'positive'
+                }
+            ];
+            
+            // 브랜드별 통계 추가
+            if (state.analytics.topBrands.length > 0) {
+                const topBrand = state.analytics.topBrands[0];
+                stats.push({
+                    icon: '🏆',
+                    value: topBrand.brand,
+                    label: '최다 상품 브랜드',
+                    change: null
+                });
+            }
+            
+            stats.forEach((stat, index) => {
+                const statCard = utils.createElement('div', 'stat-card');
+                statCard.style.opacity = '0';
+                statCard.style.transform = 'translateY(20px)';
+                
+                statCard.innerHTML = `
+                    <div class="stat-icon">${stat.icon}</div>
+                    <div class="stat-value">${stat.value}</div>
+                    <div class="stat-label">${stat.label}</div>
+                    ${stat.change ? `<div class="stat-change ${stat.change}">↗ 우수</div>` : ''}
+                `;
+                
+                analyticsGrid.appendChild(statCard);
+                
+                // 스태거드 애니메이션
+                setTimeout(() => {
+                    statCard.style.opacity = '1';
+                    statCard.style.transform = 'translateY(0)';
+                    statCard.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                }, index * 150);
+            });
+            
+            utils.showSection('analyticsSection');
         },
 
         async initAISection() {
@@ -468,66 +618,6 @@
             utils.showSection('productsSection');
         },
 
-        async initPriceInfoSection() {
-            // 기본 가격 정보 표시
-            const defaultPriceInfo = {
-                title: "💰 상품 카드 가격 정보",
-                subtitle: "각 숫자가 의미하는 바를 확인해보세요",
-                cards: [
-                    {
-                        icon: "📱",
-                        title: "출고가",
-                        description: "제조사에서 정한 기본 판매가격이에요",
-                        example: "예: 1,350,000원",
-                        highlight: false
-                    },
-                    {
-                        icon: "🎯",
-                        title: "할인율",
-                        description: "출고가 대비 얼마나 할인되는지 보여줘요",
-                        example: "예: 40% 할인",
-                        highlight: false
-                    },
-                    {
-                        icon: "💳",
-                        title: "월 납부금",
-                        description: "기기값 + 요금제를 합친 실제 월 납부 금액",
-                        example: "예: 월 65,000원",
-                        highlight: true
-                    }
-                ]
-            };
-            
-            const priceInfo = state.config?.priceInfo || defaultPriceInfo;
-            
-            // 제목 업데이트
-            utils.setElementContent('#priceInfoTitle', priceInfo.title);
-            utils.setElementContent('#priceInfoSubtitle', priceInfo.subtitle);
-            
-            // 정보 카드들 생성
-            if (priceInfo.cards && Array.isArray(priceInfo.cards)) {
-                const cardsContainer = document.getElementById('infoCards');
-                if (cardsContainer) {
-                    cardsContainer.innerHTML = '';
-                    
-                    priceInfo.cards.forEach(card => {
-                        const cardElement = utils.createElement('div', 'info-card');
-                        cardElement.innerHTML = `
-                            <div class="info-icon">${card.icon}</div>
-                            <div class="info-content">
-                                <h4>${card.title}</h4>
-                                <p>${card.description}</p>
-                                <div class="info-example ${card.highlight ? 'highlight' : ''}">${card.example}</div>
-                            </div>
-                        `;
-                        cardsContainer.appendChild(cardElement);
-                    });
-                }
-            }
-            
-            utils.showSection('priceInfoSection');
-        },
-
         async initReviewsSection() {
             if (!state.reviews || state.reviews.length === 0) {
                 console.log('⚠️ No reviews data, skipping reviews section');
@@ -546,30 +636,89 @@
             // 리뷰 렌더링
             this.renderReviews();
             
+            // 리뷰 분석 렌더링
+            this.renderReviewAnalytics();
+            
             utils.showSection('reviewsSection');
         },
 
-        async initBrandSection() {
-            if (!state.brands || Object.keys(state.brands).length === 0) {
-                console.log('⚠️ No brands data, skipping brand section');
-                return;
-            }
+        renderHotDeals(hotDeals) {
+            const dealsCarousel = document.getElementById('dealsCarousel');
+            if (!dealsCarousel) return;
             
-            // 섹션 제목 업데이트
-            if (state.config?.brands) {
-                utils.setElementContent('#brandTitle', state.config.brands.title || '제조사별 상품');
-                utils.setElementContent('#brandSubtitle', state.config.brands.subtitle || '원하는 브랜드를 선택해 보세요');
-            }
+            dealsCarousel.innerHTML = '';
             
-            // 브랜드 렌더링
-            this.renderBrands();
-            
-            utils.showSection('brandSection');
+            hotDeals.forEach((deal, index) => {
+                const { discount, discountRate, originPrice } = this.calculateDiscount(deal.model, deal.principal);
+                const modelInfo = state.models[deal.model] || {};
+                
+                const dealCard = utils.createElement('div', 'deal-card');
+                dealCard.style.opacity = '0';
+                dealCard.style.transform = 'translateY(20px)';
+                
+                dealCard.innerHTML = `
+                    <div class="deal-badge">${discountRate}% OFF</div>
+                    <div class="deal-content">
+                        <div class="deal-model">${utils.sanitizeHTML(deal.model)}</div>
+                        <div class="deal-price">${utils.formatKRW(deal.total)}</div>
+                        <div class="deal-original-price">${utils.formatKRW(originPrice)}</div>
+                        <div class="deal-specs">
+                            <span class="spec-tag">${utils.sanitizeHTML(deal.carrier)}</span>
+                            <span class="spec-tag">${utils.sanitizeHTML(deal.type)}</span>
+                            ${modelInfo.storage ? `<span class="spec-tag">${modelInfo.storage}</span>` : ''}
+                        </div>
+                        <div class="deal-timer">⏰ 한정 특가</div>
+                    </div>
+                `;
+                
+                dealCard.addEventListener('click', () => {
+                    this.handleProductClick(deal);
+                });
+                
+                dealsCarousel.appendChild(dealCard);
+                
+                // 스태거드 애니메이션
+                setTimeout(() => {
+                    dealCard.style.opacity = '1';
+                    dealCard.style.transform = 'translateY(0)';
+                    dealCard.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                }, index * 100);
+            });
         },
 
-        updateProductsForRegion() {
-            console.log('🔄 Updating products for region:', state.selectedRegion);
-            this.renderProducts();
+        startHotDealsTimer() {
+            const timerDisplay = document.getElementById('dealTimer');
+            if (!timerDisplay) return;
+            
+            let minutes = 59;
+            let seconds = 59;
+            
+            const updateTimer = () => {
+                timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (seconds === 0) {
+                    if (minutes === 0) {
+                        minutes = 59;
+                        seconds = 59;
+                        // 딜 갱신 효과
+                        const dealsCarousel = document.getElementById('dealsCarousel');
+                        if (dealsCarousel) {
+                            dealsCarousel.style.opacity = '0.7';
+                            setTimeout(() => {
+                                dealsCarousel.style.opacity = '1';
+                            }, 500);
+                        }
+                    } else {
+                        minutes--;
+                        seconds = 59;
+                    }
+                } else {
+                    seconds--;
+                }
+            };
+            
+            updateTimer();
+            state.hotDealsInterval = setInterval(updateTimer, 1000);
         },
 
         renderProducts() {
@@ -610,12 +759,6 @@
                 .filter(product => {
                     // 기본 필터링
                     if (product.total < 30000) return false;
-                    
-                    // 지역 필터링 (선택적)
-                    if (state.selectedRegion && product.region && product.region !== state.selectedRegion.id) {
-                        return false;
-                    }
-                    
                     return true;
                 })
                 .map(product => {
@@ -633,6 +776,7 @@
         createProductCard(product) {
             const brandInfo = this.getBrandInfo(product.brand);
             const { discount, discountRate, originPrice } = this.calculateDiscount(product.model, product.principal);
+            const modelInfo = state.models[product.model] || {};
             
             const card = utils.createElement('div', 'product-card');
             card.style.opacity = '0';
@@ -651,6 +795,35 @@
                             <span class="meta-tag">${utils.sanitizeHTML(product.type)}</span>
                             <span class="meta-tag">${utils.sanitizeHTML(supportText)}</span>
                         </div>
+                    </div>
+                </div>
+
+                <div class="product-details">
+                    <div class="details-grid">
+                        ${modelInfo.storage ? `
+                            <div class="detail-item">
+                                <span class="detail-label">용량</span>
+                                <span class="detail-value">${modelInfo.storage}</span>
+                            </div>
+                        ` : ''}
+                        ${modelInfo.releaseDate ? `
+                            <div class="detail-item">
+                                <span class="detail-label">출시일</span>
+                                <span class="detail-value">${modelInfo.releaseDate}</span>
+                            </div>
+                        ` : ''}
+                        ${product.plan_period ? `
+                            <div class="detail-item">
+                                <span class="detail-label">약정기간</span>
+                                <span class="detail-value">${product.plan_period}</span>
+                            </div>
+                        ` : ''}
+                        ${product.plan_name ? `
+                            <div class="detail-item">
+                                <span class="detail-label">요금제</span>
+                                <span class="detail-value">${product.plan_name}</span>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
                 
@@ -723,53 +896,51 @@
             this.startReviewAutoScroll();
         },
 
-        renderBrands() {
-            const brandGrid = document.getElementById('brandGrid');
-            if (!brandGrid) return;
+        renderReviewAnalytics() {
+            const keywordCloud = document.getElementById('keywordCloud');
+            const sentimentBars = document.getElementById('sentimentBars');
             
-            brandGrid.innerHTML = '';
+            if (!keywordCloud || !sentimentBars) return;
             
-            Object.entries(state.brands).forEach(([brandName, brandData], index) => {
-                const stats = this.calculateBrandStats(brandName);
-                
-                const brandCard = utils.createElement('div', 'brand-card');
-                brandCard.style.opacity = '0';
-                brandCard.style.transform = 'translateY(20px)';
-                
-                brandCard.innerHTML = `
-                    ${brandData.logo ? `
-                        <div class="brand-logo">
-                            <img src="${brandData.logo}" alt="${brandName}" loading="lazy">
-                        </div>
-                    ` : ''}
-                    <h4>${utils.sanitizeHTML(brandName)}</h4>
-                    <p>${utils.sanitizeHTML(brandData.description || '')}</p>
-                    <div class="brand-stats">
-                        <div class="stat-row">
-                            <span class="stat-label">인기 모델</span>
-                            <span class="stat-value">${utils.sanitizeHTML(stats.popularModel.replace('갤럭시 ', ''))}</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">최대 할인</span>
-                            <span class="stat-value highlight">${stats.maxDiscount}%</span>
-                        </div>
-                    </div>
-                    <div class="brand-arrow">›</div>
-                `;
-                
-                brandCard.addEventListener('click', () => {
-                    this.handleBrandClick(brandName);
-                });
-                
-                brandGrid.appendChild(brandCard);
-                
-                // 스태거드 애니메이션
-                setTimeout(() => {
-                    brandCard.style.opacity = '1';
-                    brandCard.style.transform = 'translateY(0)';
-                    brandCard.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
-                }, index * 200);
+            // 키워드 추출
+            const allComments = state.reviews.map(review => review.comment).join(' ');
+            const keywords = utils.extractKeywords(allComments);
+            
+            keywordCloud.innerHTML = '';
+            keywords.slice(0, 8).forEach(keyword => {
+                const keywordTag = utils.createElement('span', 'keyword-tag', keyword);
+                keywordCloud.appendChild(keywordTag);
             });
+            
+            // 감정 분석
+            const sentiments = { positive: 0, neutral: 0, negative: 0 };
+            state.reviews.forEach(review => {
+                const sentiment = utils.analyzeSentiment(review.comment);
+                sentiments[sentiment]++;
+            });
+            
+            const total = state.reviews.length;
+            const positivePercent = Math.round((sentiments.positive / total) * 100);
+            const neutralPercent = Math.round((sentiments.neutral / total) * 100);
+            const negativePercent = Math.round((sentiments.negative / total) * 100);
+            
+            sentimentBars.innerHTML = `
+                <div class="sentiment-bar">
+                    <div class="sentiment-label">긍정</div>
+                    <div class="sentiment-value sentiment-positive" style="width: ${positivePercent}%"></div>
+                    <div class="sentiment-percent">${positivePercent}%</div>
+                </div>
+                <div class="sentiment-bar">
+                    <div class="sentiment-label">중립</div>
+                    <div class="sentiment-value sentiment-neutral" style="width: ${neutralPercent}%"></div>
+                    <div class="sentiment-percent">${neutralPercent}%</div>
+                </div>
+                <div class="sentiment-bar">
+                    <div class="sentiment-label">부정</div>
+                    <div class="sentiment-value sentiment-negative" style="width: ${negativePercent}%"></div>
+                    <div class="sentiment-percent">${negativePercent}%</div>
+                </div>
+            `;
         },
 
         updateReviewStats() {
@@ -839,43 +1010,9 @@
             return supportMap[support] || support;
         },
 
-        calculateBrandStats(brandName) {
-            const brandProducts = state.products.filter(p => 
-                p.brand === brandName || p.brand.toLowerCase() === brandName.toLowerCase()
-            );
-            
-            if (brandProducts.length === 0) {
-                return {
-                    maxDiscount: 0,
-                    popularModel: state.brands[brandName]?.defaultModel || 'N/A',
-                    count: 0
-                };
-            }
-            
-            let maxDiscount = 0;
-            let popularModel = brandProducts[0].model;
-            
-            brandProducts.forEach(product => {
-                const { discountRate } = this.calculateDiscount(product.model, product.principal);
-                if (discountRate > maxDiscount) {
-                    maxDiscount = discountRate;
-                    popularModel = product.model;
-                }
-            });
-            
-            return {
-                maxDiscount,
-                popularModel,
-                count: brandProducts.length
-            };
-        },
-
         // 이벤트 핸들러들
         handleProductClick(product) {
-            if (!state.config?.urls?.product) {
-                window.open('https://nofee.team/ai', '_blank');
-                return;
-            }
+            const baseUrl = state.config?.urls?.product || 'https://nofee.team/ai';
             
             const params = new URLSearchParams({
                 model: product.model || "",
@@ -891,15 +1028,7 @@
                 total: product.total || 0
             });
             
-            window.open(state.config.urls.product + '?' + params.toString(), '_blank');
-        },
-
-        handleBrandClick(brandName) {
-            const baseUrl = state.config?.urls?.brand || 'https://nofee.team/more';
-            
-            const url = new URL(baseUrl);
-            url.searchParams.set('brand', brandName);
-            window.open(url.toString(), '_blank');
+            window.open(baseUrl + '?' + params.toString(), '_blank');
         },
 
         // 배너 슬라이더 메서드들
@@ -1035,8 +1164,12 @@
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
                     this.stopBannerAutoSlide();
+                    if (state.hotDealsInterval) {
+                        clearInterval(state.hotDealsInterval);
+                    }
                 } else {
                     this.startBannerAutoSlide();
+                    this.startHotDealsTimer();
                 }
             });
 
@@ -1067,24 +1200,24 @@
     // 🚀 메인 초기화 함수
     async function initNofeeMain() {
         try {
-            console.log('🚀 노피 메인페이지 v3.1 초기화 시작 (에러 핸들링 개선)');
+            console.log('🚀 노피 메인페이지 v4.0 초기화 시작 (창의적 기능 강화)');
             
             // 모든 데이터 로드 및 UI 초기화
             await dataLoader.loadAllData();
             
             // 전역 함수 등록 (웹플로우 호환성)
             window.nofeeState = state;
-            window.selectBrand = (brand) => dataLoader.handleBrandClick(brand);
             
-            console.log('✅ 노피 메인페이지 v3.1 초기화 완료');
+            console.log('✅ 노피 메인페이지 v4.0 초기화 완료');
             
             // 초기화 완료 이벤트
             window.dispatchEvent(new CustomEvent('nofeeMainReady', {
                 detail: { 
-                    version: '3.1', 
+                    version: '4.0', 
                     timestamp: Date.now(),
                     dataLoaded: state.isDataLoaded,
-                    errors: state.loadingErrors
+                    errors: state.loadingErrors,
+                    analytics: state.analytics
                 }
             }));
             
@@ -1105,6 +1238,9 @@
     window.addEventListener('beforeunload', () => {
         if (state.bannerInterval) {
             clearInterval(state.bannerInterval);
+        }
+        if (state.hotDealsInterval) {
+            clearInterval(state.hotDealsInterval);
         }
     });
 
