@@ -1,248 +1,40 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>노피 메인페이지 테스트</title>
-    
-    <!-- GitHub에서 스타일 로드 -->
-    <link rel="stylesheet" href="https://jacob-po.github.io/nofee-webflow/styles/shared.css?v=1.0.6">
-    
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-        
-        .debug-panel {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 12px;
-            max-width: 300px;
-            z-index: 9999;
-        }
-        
-        .debug-panel h4 {
-            margin: 0 0 10px 0;
-            color: #4CAF50;
-        }
-        
-        .debug-panel .status {
-            margin: 5px 0;
-        }
-        
-        .debug-panel .success {
-            color: #4CAF50;
-        }
-        
-        .debug-panel .error {
-            color: #f44336;
-        }
-    </style>
-</head>
-<body>
-    <!-- 노피 메인페이지 HTML -->
-    <div class="nofee-embed">
-        <div class="nofee-container">
-            <!-- 🚀 Hero Banner Section -->
-            <div class="nofee-section">
-                <div class="hero-banner">
-                    <div class="banner-track" id="bannerTrack">
-                        <!-- 배너는 JavaScript로 동적 생성 -->
-                    </div>
-                    
-                    <div class="banner-indicators">
-                        <!-- 인디케이터도 JavaScript로 동적 생성 -->
-                    </div>
-                </div>
-            </div>
+<!-- 노피 AI 상담 페이지 - Webflow Embed Code -->
+<!-- GitHub에서 스타일과 스크립트를 불러옵니다 -->
+<link rel="stylesheet" href="https://jacob-po.github.io/nofee-webflow/styles/ai.css?v=1.0.0">
 
-            <!-- 🤖 AI 상담 CTA -->
-            <div class="nofee-section">
-                <div class="ai-cta-container">
-                    <div class="ai-cta-card">
-                        <div class="ai-sparkles">✨</div>
-                        <div class="ai-content">
-                            <div class="ai-header">
-                                <div class="ai-badge">
-                                    <span class="ai-dot"></span>
-                                    노피 AI
-                                </div>
-                                <div class="ai-title">나에게 딱 맞는 휴대폰 찾기</div>
-                            </div>
-                            <div class="ai-description">
-                                AI가 당신의 사용패턴을 분석해서<br>
-                                <strong>최적의 기종과 최저가를 추천</strong>해드려요
-                            </div>
-                            <div class="ai-features">
-                                <span class="feature-tag">💬 1:1 맞춤 상담</span>
-                                <span class="feature-tag">📊 가격 비교</span>
-                                <span class="feature-tag">⚡ 즉시 견적</span>
-                            </div>
-                        </div>
-                        <div class="ai-arrow">
-                            <span>AI 상담 시작</span>
-                            <div class="arrow-icon">→</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 🏆 Best Products Section -->
-            <div class="nofee-section">
-                <div class="section-header">
-                    <h2 class="section-title">지금 가장 인기있는 상품</h2>
-                    <p class="section-subtitle">할인율 높은 순으로 AI가 엄선한 추천 상품</p>
-                </div>
-                
-                <div class="best-products">
-                    <div class="loading-skeleton" id="productsLoading">
-                        <div class="skeleton-item"></div>
-                        <div class="skeleton-item"></div>
-                        <div class="skeleton-item"></div>
-                        <div class="skeleton-item"></div>
-                    </div>
-                    
-                    <div class="products-grid" id="productsGrid" style="display: none;">
-                        <!-- Products will be loaded here -->
-                    </div>
-                    
-                    <div class="load-more">
-                        <button class="load-more-btn">
-                            전체 상품 보기
-                            <span>→</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 💡 Price Info Section -->
-            <div class="nofee-section">
-                <div class="price-info-section">
-                    <div class="info-header">
-                        <h3 class="info-title">💰 상품 카드 가격 정보</h3>
-                        <p class="info-subtitle">각 숫자가 의미하는 바를 확인해보세요</p>
-                    </div>
-                    
-                    <div class="info-cards">
-                        <div class="info-card">
-                            <div class="info-icon">📱</div>
-                            <div class="info-content">
-                                <h4>출고가</h4>
-                                <p>제조사에서 정한 기본 판매가격이에요</p>
-                                <div class="info-example">예: 1,350,000원</div>
-                            </div>
-                        </div>
-                        
-                        <div class="info-card">
-                            <div class="info-icon">🎯</div>
-                            <div class="info-content">
-                                <h4>할인율</h4>
-                                <p>출고가 대비 얼마나 할인되는지 보여줘요</p>
-                                <div class="info-example">예: 40% 할인</div>
-                            </div>
-                        </div>
-                        
-                        <div class="info-card">
-                            <div class="info-icon">💳</div>
-                            <div class="info-content">
-                                <h4>월 납부금</h4>
-                                <p>기기값 + 요금제를 합친 실제 월 납부 금액</p>
-                                <div class="info-example highlight">예: 월 65,000원</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 📱 Reviews Section -->
-            <div class="nofee-section">
-                <div class="section-header">
-                    <h2 class="section-title">실시간 고객 후기</h2>
-                    <p class="section-subtitle">실제 구매 고객들의 생생한 경험담</p>
-                </div>
-                
-                <div class="reviews-section">
-                    <div class="reviews-header">
-                        <div class="rating-summary">
-                            <span class="rating-score">4.9</span>
-                            <div>
-                                <div class="rating-stars">⭐⭐⭐⭐⭐</div>
-                                <div class="rating-count">2,847개 리뷰</div>
-                            </div>
-                        </div>
-                        <div class="live-badge">
-                            <div class="live-dot"></div>
-                            <span>LIVE</span>
-                        </div>
-                    </div>
-                    
-                    <div class="reviews-scroll" id="reviewsScroll">
-                        <!-- Reviews will be loaded here -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- 🏢 Brand Section -->
-            <div class="nofee-section">
-                <div class="section-header">
-                    <h2 class="section-title">제조사별 상품</h2>
-                    <p class="section-subtitle">원하는 브랜드를 선택해 보세요</p>
-                </div>
-                
-                <div class="brand-section">
-                    <div class="brand-grid">
-                        <!-- 브랜드 카드는 JavaScript로 동적 생성 -->
-                    </div>
-                </div>
-            </div>
+<!-- AI 채팅 인터페이스 -->
+<div class="chat-wrapper">
+    <div class="chat-header">
+        <div class="ai-avatar">
+            <img src="https://cdn.prod.website-files.com/6821372c9d4a7fab5de1da56/682c02c94e124b9c3ec74ab0_%E1%84%82%E1%85%A9%E1%84%91%E1%85%B5%20%E1%84%8F%E1%85%B3%E1%86%AF%E1%84%85%E1%85%B5%E1%86%B8.png" alt="노피 AI" loading="eager" />
+            <div class="ai-status"></div>
+        </div>
+        <div class="header-text">
+            <h1>노피AI</h1>
+            <span class="ai-subtitle">AI 맞춤 상담</span>
         </div>
     </div>
+    <div id="chatbot" class="chat-container"></div>
+</div>
 
-    <!-- 디버그 패널 -->
-    <div class="debug-panel" id="debugPanel">
-        <h4>디버그 정보</h4>
-        <div id="debugStatus"></div>
-    </div>
+<!-- Webflow 제출폼 숨김 필드 -->
+<!-- Apply 폼의 필드들과 연동됩니다 -->
+<input id="model" name="model" type="hidden" />
+<input id="carrier" name="carrier" type="hidden" />
+<input id="type" name="type" type="hidden" />
+<input id="support" name="support" type="hidden" />
+<input id="principal" name="principal" type="hidden" />
+<input id="brand" name="brand" type="hidden" />
+<input id="plan_name" name="plan_name" type="hidden" />
+<input id="plan_period" name="plan_period" type="hidden" />
+<input id="plan" name="plan" type="hidden" />
+<input id="installment" name="installment" type="hidden" />
+<input id="total" name="total" type="hidden" />
+<input id="name" name="name" type="hidden" />
+<input id="phone" name="phone" type="hidden" />
+<input id="region" name="region" type="hidden" />
+<input id="city" name="city" type="hidden" />
+<input id="consent" name="consent" type="hidden" />
 
-    <!-- GitHub에서 JavaScript 로드 -->
-    <script src="https://jacob-po.github.io/nofee-webflow/pages/main.js?v=1.0.6"></script>
-    
-    <!-- 디버그 스크립트 -->
-    <script>
-        const debugStatus = document.getElementById('debugStatus');
-        
-        function addDebugInfo(message, isError = false) {
-            const div = document.createElement('div');
-            div.className = 'status ' + (isError ? 'error' : 'success');
-            div.textContent = message;
-            debugStatus.appendChild(div);
-        }
-        
-        // 콘솔 로그 캡처
-        const originalLog = console.log;
-        const originalError = console.error;
-        
-        console.log = function(...args) {
-            originalLog.apply(console, args);
-            addDebugInfo(args.join(' '));
-        };
-        
-        console.error = function(...args) {
-            originalError.apply(console, args);
-            addDebugInfo(args.join(' '), true);
-        };
-        
-        // 페이지 로드 상태 확인
-        window.addEventListener('load', () => {
-            addDebugInfo('페이지 로드 완료');
-        });
-    </script>
-</body>
-</html>
+<!-- GitHub에서 JavaScript 로드 -->
+<script src="https://jacob-po.github.io/nofee-webflow/pages/ai.js?v=1.0.0"></script>
