@@ -296,7 +296,7 @@
                         </div>
                         <div class="action-arrow">→</div>
                     </div>
-                    <div class="action-card trending" data-action="products">
+                    <div class="action-card trending" data-action="seeAll">
                         <div class="action-badge">📈 실시간</div>
                         <div class="action-icon">💰</div>
                         <div class="action-content">
@@ -583,21 +583,24 @@
                     window.open(aiUrl, '_blank');
                     break;
                 case 'products':
-                    // 지금 가장 핫한 폰 - 할인율 높은 순
-                    window.open(productsUrl + '?filter=hot&sort=discount', '_blank');
+                    // 전체 상품 보기
+                    window.open(productsUrl, '_blank');
                     break;
                 case 'compare':
-                    // 월 X만원 아끼기 - 가격 낮은 순
-                    window.open(productsUrl + '?filter=save&sort=asc', '_blank');
-                    break;
-                case 'uniform':
-                    // 전국 성지가격 보장 - 전체 상품
-                    window.open(productsUrl + '?filter=guarantee', '_blank');
+                    // 월 1만원 아끼기 - 절약형 필터
+                    window.open(productsUrl + '?filter=save', '_blank');
                     break;
                 case 'seeAll':
+                    // 지금 가장 핫한 폰 - 핫딜 필터
+                    window.open(productsUrl + '?filter=hot', '_blank');
+                    break;
+                case 'uniform':
+                    // 균일가 시스템 - 균일가 필터
+                    window.open(productsUrl + '?filter=uniform', '_blank');
+                    break;
                 case 'seeAllRecent':
-                    // 전체 상품
-                    window.open(productsUrl, '_blank');
+                    // AI 추천 상품 필터
+                    window.open(productsUrl + '?filter=best', '_blank');
                     break;
                 case 'recent':
                 case 'favorites':
