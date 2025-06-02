@@ -11,8 +11,10 @@
     let brandsData = {};
 
     // GitHub 저장소 설정
-    const basePath = window.location.pathname.startsWith('/nofee-webflow') ? '/nofee-webflow' : '';
-    const GITHUB_BASE_URL = window.location.origin + basePath;
+    // 현재 스크립트 경로 기준으로 GitHub Pages 루트 계산
+    const scriptUrl = new URL(document.currentScript.src);
+    const basePath = scriptUrl.pathname.split('/').slice(0, -2).join('/');
+    const GITHUB_BASE_URL = scriptUrl.origin + basePath;
     // products.json을 같은 저장소로 이동한 경우:
     const PRODUCTS_DATA_URL = `${GITHUB_BASE_URL}/data/products.json`;
     // 외부 저장소를 계속 사용하려면 아래 주석을 해제하고 위 줄을 주석처리:
