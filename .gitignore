@@ -17,6 +17,11 @@ yarn-debug.log*
 yarn-error.log*
 package-lock.json
 
+# Python
+__pycache__/
+venv/
+*.pyc
+
 # Editor directories and files
 .idea/
 .vscode/

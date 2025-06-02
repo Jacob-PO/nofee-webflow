@@ -5,7 +5,7 @@
 
 | 파일 이름 | 설명 | 예시 | 링크 |
 |-----------|------|------|------|
-| `products.json` | 휴대폰 상품 데이터 | `{ "date": "2025-05-25", "carrier": "SKT", "brand": "삼성", "model": "갤럭시 S25 256GB", ... }` | <https://jacob-po.github.io/nofee-webflow/data/products.json> |
+| `products.json` | 휴대폰 상품 데이터 | `{ "date": "2025-06-01", "carrier": "SK", "model_name": "S25-256", "contract_type": "이동", "device_principal": -50000 }` | <https://jacob-po.github.io/nofee-webflow/data/products.json> |
 | `review.json` | 사용자 리뷰 목록 | `{ "id": 1, "name": "김민수", "comment": "기기변경으로 샀는데 월 8만원대면..." }` | <https://jacob-po.github.io/nofee-webflow/data/review.json> |
 | `banner.json` | 메인 페이지 배너 정보 | `{ "id": 1, "title": "전국 어디서나...", "emoji": "🚀" }` | <https://jacob-po.github.io/nofee-webflow/data/banner.json> |
 | `brands.json` | 브랜드별 기본 설정 | `{ "삼성": { "logo": "https://...jpg", "defaultModel": "S25 Ultra" } }` | <https://jacob-po.github.io/nofee-webflow/data/brands.json> |
@@ -13,4 +13,3 @@
 | `regions.json` | 전국 지역/행정구 목록 | `{ "id": "seoul", "name": "서울", "districts": ["강남구", ...] }` | <https://jacob-po.github.io/nofee-webflow/data/regions.json> |
 | `config.json` | 사이트 및 API 설정 값 | `{ "site": { "name": "노피", "domain": "https://nofee.team" }, "api": { ... } }` | <https://jacob-po.github.io/nofee-webflow/data/config.json> |
 
-> 참고: `pages/main.js`에서는 `banners.json` 파일을 로드하도록 되어 있으나 실제 파일 이름은 `banner.json`입니다. 필요한 경우 파일명을 맞춰 주거나 스크립트의 경로를 수정해야 합니다.
