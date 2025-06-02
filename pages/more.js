@@ -33,6 +33,9 @@
     // const PRODUCTS_DATA_URL = 'https://jacob-po.github.io/products-data/products.json';
     const GITHUB_BASE_URL = 'https://jacob-po.github.io/nofee-webflow';
     const PRODUCTS_DATA_URL = `${GITHUB_BASE_URL}/data/products.json`;
+    const MODELS_DATA_URL = `${GITHUB_BASE_URL}/data/models.json`;
+
+    let modelsData = {};
     
     // 설정값
     const CONFIG = {
@@ -68,10 +71,46 @@
                 'Samsung': { icon: 'S', class: 'samsung', displayName: '삼성' },
                 'Apple': { icon: 'A', class: 'apple', displayName: '애플' }
             };
-            
+
             return brandMap[brand] || { icon: '📱', class: 'etc', displayName: brand };
         },
-        
+
+        getOriginPrice: (model) => {
+            if (modelsData && modelsData[model]) {
+                return modelsData[model].originPrice;
+            }
+
+            if (modelsData) {
+                for (const [key, value] of Object.entries(modelsData)) {
+                    if (model.includes(key) || key.includes(model)) {
+                        return value.originPrice;
+                    }
+                }
+            }
+
+            const modelLower = model.toLowerCase();
+
+            if (modelLower.includes('galaxy s25 ultra') || model.includes('갤럭시 S25 울트라')) return 1700000;
+            if (modelLower.includes('galaxy s25+') || modelLower.includes('galaxy s25 plus') || model.includes('갤럭시 S25 플러스')) return 1400000;
+            if (modelLower.includes('galaxy s25') || model.includes('갤럭시 S25')) return 1200000;
+
+            if (modelLower.includes('galaxy s24 ultra') || model.includes('갤럭시 S24 울트라')) return 1600000;
+            if (modelLower.includes('galaxy s24+') || modelLower.includes('galaxy s24 plus') || model.includes('갤럭시 S24 플러스')) return 1300000;
+            if (modelLower.includes('galaxy s24 fe') || model.includes('갤럭시 S24 FE')) return 900000;
+            if (modelLower.includes('galaxy s24') || model.includes('갤럭시 S24')) return 1100000;
+
+            if (modelLower.includes('galaxy z fold') || model.includes('갤럭시 Z 폴드')) return 2200000;
+            if (modelLower.includes('galaxy z flip') || model.includes('갤럭시 Z 플립')) return 1400000;
+
+            if (modelLower.includes('iphone 16 pro max') || model.includes('아이폰 16 프로 맥스')) return 1900000;
+            if (modelLower.includes('iphone 16 pro') || model.includes('아이폰 16 프로')) return 1550000;
+            if (modelLower.includes('iphone 16 plus') || model.includes('아이폰 16 플러스')) return 1350000;
+            if (modelLower.includes('iphone 16') || model.includes('아이폰 16')) return 1250000;
+            if (modelLower.includes('iphone 15') || model.includes('아이폰 15')) return 1150000;
+
+            return 1000000;
+        },
+
         calculateDiscount: (originalPrice, principal) => {
             const origin = Number(originalPrice) || 0;
             const principalAmount = Number(principal) || 0;
@@ -89,7 +128,7 @@
             return {
                 ...product,
                 brand: utils.normalizeBrand(product.brand),
-                originPrice: product['origin price'] || product.originPrice || 0,
+                originPrice: product['origin price'] || product.originPrice || utils.getOriginPrice(product.model),
                 principal: Number(product.principal) || 0,
                 total: Number(product.total) || 0,
                 installment: Number(product.installment) || 0,
@@ -439,13 +478,21 @@
             try {
                 state.isLoading = true;
                 ui.renderLoading();
-                
-                const response = await fetch(PRODUCTS_DATA_URL);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+
+                const [productsRes, modelsRes] = await Promise.all([
+                    fetch(PRODUCTS_DATA_URL),
+                    fetch(MODELS_DATA_URL).catch(() => null)
+                ]);
+
+                if (!productsRes.ok) {
+                    throw new Error(`HTTP error! status: ${productsRes.status}`);
                 }
-                
-                const data = await response.json();
+
+                if (modelsRes && modelsRes.ok) {
+                    modelsData = await modelsRes.json();
+                }
+
+                const data = await productsRes.json();
                 state.products = data;
                 
                 console.log(`상품 데이터 로드 완료: ${data.length}개`);
