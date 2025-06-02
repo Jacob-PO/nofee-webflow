@@ -1,4 +1,4 @@
-// 🚀 노피 메인페이지 스크립트 v3.0 - 완전 데이터 의존형
+// 🚀 노피 메인페이지 스크립트 v3.1 - 에러 핸들링 개선
 (function() {
     'use strict';
     
@@ -28,7 +28,7 @@
         config: `${GITHUB_BASE_URL}/data/config.json`,
         products: `${GITHUB_BASE_URL}/data/products.json`,
         reviews: `${GITHUB_BASE_URL}/data/review.json`,
-        banners: `${GITHUB_BASE_URL}/data/banner.json`, // 수정: banners.json → banner.json
+        banners: `${GITHUB_BASE_URL}/data/banner.json`, // 수정된 파일명
         brands: `${GITHUB_BASE_URL}/data/brands.json`,
         models: `${GITHUB_BASE_URL}/data/models.json`,
         regions: `${GITHUB_BASE_URL}/data/regions.json`
@@ -95,7 +95,7 @@
 
     // 📥 데이터 로더
     const dataLoader = {
-        async fetchData(url, name) {
+        async fetchData(url, name, isOptional = false) {
             try {
                 console.log(`📥 Loading ${name} from ${url}`);
                 const response = await fetch(url);
@@ -108,9 +108,14 @@
                 console.log(`✅ ${name} loaded successfully:`, data);
                 return data;
             } catch (error) {
-                console.error(`❌ Failed to load ${name}:`, error.message);
-                state.loadingErrors.push({ name, error: error.message });
-                throw error;
+                if (isOptional) {
+                    console.warn(`⚠️ Optional ${name} load failed (continuing):`, error.message);
+                    return null;
+                } else {
+                    console.error(`❌ Failed to load ${name}:`, error.message);
+                    state.loadingErrors.push({ name, error: error.message });
+                    throw error;
+                }
             }
         },
 
@@ -118,35 +123,46 @@
             const loadingElement = document.getElementById('initialLoading');
             
             try {
+                console.log('🚀 노피 데이터 로드 시작...');
+                
                 // 1단계: 필수 설정 데이터 로드
-                console.log('🚀 1단계: 필수 설정 데이터 로드');
-                state.config = await this.fetchData(DATA_URLS.config, 'config');
+                console.log('📋 1단계: 기본 설정 로드');
+                try {
+                    state.config = await this.fetchData(DATA_URLS.config, 'config', true);
+                } catch (error) {
+                    console.warn('⚠️ Config 로드 실패, 기본값 사용');
+                    state.config = this.getDefaultConfig();
+                }
                 
                 // 설정 데이터로 기본 UI 업데이트
                 this.updateBasicUI();
                 
-                // 2단계: 코어 데이터 병렬 로드
-                console.log('🚀 2단계: 코어 데이터 병렬 로드');
-                const coreDataPromises = [
-                    this.fetchData(DATA_URLS.models, 'models').then(data => state.models = data).catch(() => state.models = {}),
-                    this.fetchData(DATA_URLS.brands, 'brands').then(data => state.brands = data).catch(() => state.brands = {}),
-                    this.fetchData(DATA_URLS.regions, 'regions').then(data => state.regions = data).catch(() => state.regions = [])
-                ];
+                // 2단계: 코어 데이터 로드 (선택적)
+                console.log('🔧 2단계: 코어 데이터 로드');
+                const coreDataResults = await Promise.allSettled([
+                    this.fetchData(DATA_URLS.models, 'models', true).then(data => state.models = data || {}),
+                    this.fetchData(DATA_URLS.brands, 'brands', true).then(data => state.brands = data || {}),
+                    this.fetchData(DATA_URLS.regions, 'regions', true).then(data => state.regions = data || [])
+                ]);
                 
-                await Promise.allSettled(coreDataPromises);
+                // 3단계: 컨텐츠 데이터 로드 (선택적)
+                console.log('📱 3단계: 컨텐츠 데이터 로드');
+                const contentDataResults = await Promise.allSettled([
+                    this.fetchData(DATA_URLS.banners, 'banners', true).then(data => state.banners = data || []),
+                    this.fetchData(DATA_URLS.products, 'products', true).then(data => state.products = data || []),
+                    this.fetchData(DATA_URLS.reviews, 'reviews', true).then(data => state.reviews = data || [])
+                ]);
                 
-                // 3단계: 컨텐츠 데이터 병렬 로드
-                console.log('🚀 3단계: 컨텐츠 데이터 병렬 로드');
-                const contentDataPromises = [
-                    this.fetchData(DATA_URLS.banners, 'banners').then(data => state.banners = data).catch(() => state.banners = []),
-                    this.fetchData(DATA_URLS.products, 'products').then(data => state.products = data).catch(() => state.products = []),
-                    this.fetchData(DATA_URLS.reviews, 'reviews').then(data => state.reviews = data).catch(() => state.reviews = [])
-                ];
+                // 로딩 결과 확인
+                const allResults = [...coreDataResults, ...contentDataResults];
+                const failedLoads = allResults.filter(result => result.status === 'rejected');
                 
-                await Promise.allSettled(contentDataPromises);
+                if (failedLoads.length > 0) {
+                    console.warn(`⚠️ ${failedLoads.length}개 데이터 로드 실패, 기본값으로 진행`);
+                }
                 
                 state.isDataLoaded = true;
-                console.log('✅ All data loaded successfully');
+                console.log('✅ 데이터 로드 완료, UI 초기화 시작');
                 
                 // 로딩 화면 숨기기
                 utils.hideSection('initialLoading');
@@ -156,8 +172,50 @@
                 
             } catch (error) {
                 console.error('❌ Critical data loading failed:', error);
-                this.showError('필수 데이터를 불러올 수 없습니다');
+                this.showError('데이터를 불러오는데 실패했습니다');
             }
+        },
+
+        getDefaultConfig() {
+            return {
+                site: {
+                    name: "노피",
+                    title: "노피 - 전국 어디서나 성지 가격으로 휴대폰 최저가"
+                },
+                hero: {
+                    title: "전국 어디서나 <span class=\"highlight\">성지 가격</span>으로<br>휴대폰 최저가를 찾아보세요",
+                    subtitle: "AI로 찾아보는 집근처 휴대폰 성지 최저가 노피AI",
+                    features: [
+                        { emoji: "🎯", text: "전국 성지 가격" },
+                        { emoji: "🤖", text: "AI 맞춤 추천" },
+                        { emoji: "📞", text: "전화 없이 신청" }
+                    ]
+                },
+                ai: {
+                    title: "나에게 딱 맞는 휴대폰 찾기",
+                    description: "AI가 당신의 사용패턴을 분석해서<br><strong>최적의 기종과 최저가를 추천</strong>해드려요",
+                    features: ["💬 1:1 맞춤 상담", "📊 가격 비교", "⚡ 즉시 견적"],
+                    ctaText: "AI 상담 시작"
+                },
+                products: {
+                    title: "지금 가장 인기있는 상품",
+                    subtitle: "할인율 높은 순으로 AI가 엄선한 추천 상품"
+                },
+                reviews: {
+                    title: "실시간 고객 후기",
+                    subtitle: "실제 구매 고객들의 생생한 경험담"
+                },
+                brands: {
+                    title: "제조사별 상품",
+                    subtitle: "원하는 브랜드를 선택해 보세요"
+                },
+                urls: {
+                    ai: "https://nofee.team/ai",
+                    products: "https://nofee.team/more",
+                    product: "https://nofee.team/ai",
+                    brand: "https://nofee.team/more"
+                }
+            };
         },
 
         updateBasicUI() {
@@ -165,19 +223,9 @@
             
             const config = state.config;
             
-            // 사이트 제목 및 메타 업데이트
+            // 사이트 제목 업데이트
             if (config.site?.title) {
                 document.title = config.site.title;
-            }
-            
-            // Hero 섹션 업데이트
-            if (config.hero) {
-                utils.setElementContent('#heroTitle', config.hero.title, true);
-                utils.setElementContent('#heroSubtitle', config.hero.subtitle);
-                
-                if (config.hero.logo) {
-                    utils.setElementContent('#heroLogo', config.hero.logo);
-                }
             }
             
             // CSS 변수 업데이트 (테마 색상)
@@ -191,15 +239,15 @@
 
         async initializeAllSections() {
             try {
-                // 순차적으로 섹션 초기화
-                await this.initHeroSection();
-                await this.initRegionSection();
-                await this.initBannerSection();
-                await this.initAISection();
-                await this.initProductsSection();
-                await this.initPriceInfoSection();
-                await this.initReviewsSection();
-                await this.initBrandSection();
+                // 순차적으로 섹션 초기화 (에러가 발생해도 다음 섹션 계속)
+                await this.safeInit('Hero', () => this.initHeroSection());
+                await this.safeInit('Region', () => this.initRegionSection());
+                await this.safeInit('Banner', () => this.initBannerSection());
+                await this.safeInit('AI', () => this.initAISection());
+                await this.safeInit('Products', () => this.initProductsSection());
+                await this.safeInit('PriceInfo', () => this.initPriceInfoSection());
+                await this.safeInit('Reviews', () => this.initReviewsSection());
+                await this.safeInit('Brand', () => this.initBrandSection());
                 
                 // 애니메이션 및 인터랙션 초기화
                 this.initAnimations();
@@ -209,7 +257,17 @@
                 
             } catch (error) {
                 console.error('❌ Section initialization failed:', error);
-                this.showError('페이지 초기화 중 오류가 발생했습니다');
+                // 에러가 발생해도 계속 진행
+            }
+        },
+
+        async safeInit(sectionName, initFunction) {
+            try {
+                await initFunction();
+                console.log(`✅ ${sectionName} section initialized`);
+            } catch (error) {
+                console.error(`❌ ${sectionName} section failed:`, error);
+                // 에러가 발생해도 다른 섹션은 계속 초기화
             }
         },
 
@@ -217,6 +275,10 @@
             if (!state.config?.hero) return;
             
             const { hero } = state.config;
+            
+            // Hero 텍스트 업데이트
+            utils.setElementContent('#heroTitle', hero.title, true);
+            utils.setElementContent('#heroSubtitle', hero.subtitle);
             
             // Hero features 생성
             if (hero.features && Array.isArray(hero.features)) {
@@ -278,19 +340,30 @@
                 regionGrid.appendChild(regionItem);
             });
             
-            // 지역 섹션 텍스트 업데이트
-            if (state.config?.regions) {
-                utils.setElementContent('#regionTitle', state.config.regions.title || '내 지역 선택');
-                utils.setElementContent('#regionSubtitle', state.config.regions.subtitle || '가까운 성지를 찾아드려요');
-            }
-            
             utils.showSection('regionSection');
         },
 
         async initBannerSection() {
             if (!state.banners || state.banners.length === 0) {
-                console.log('⚠️ No banners data, skipping banner section');
-                return;
+                console.log('⚠️ No banners data, using default banners');
+                // 기본 배너 사용
+                state.banners = [
+                    {
+                        title: "전국 어디서나<br><strong>성지 가격</strong>으로 드립니다",
+                        subtitle: "오직 노피 입점 대리점에서만 가능한 특가",
+                        emoji: "🎯"
+                    },
+                    {
+                        title: "AI가 찾아주는<br><strong>집근처 휴대폰 성지</strong>",
+                        subtitle: "노피AI로 간편하게 최저가 비교하세요",
+                        emoji: "🤖"
+                    },
+                    {
+                        title: "부담없는 구매<br><strong>전화없이 견적신청</strong>",
+                        subtitle: "신청과 카톡만으로 구매 끝!",
+                        emoji: "⚡"
+                    }
+                ];
             }
             
             const track = document.getElementById('bannerTrack');
@@ -396,13 +469,40 @@
         },
 
         async initPriceInfoSection() {
-            if (!state.config?.priceInfo) return;
+            // 기본 가격 정보 표시
+            const defaultPriceInfo = {
+                title: "💰 상품 카드 가격 정보",
+                subtitle: "각 숫자가 의미하는 바를 확인해보세요",
+                cards: [
+                    {
+                        icon: "📱",
+                        title: "출고가",
+                        description: "제조사에서 정한 기본 판매가격이에요",
+                        example: "예: 1,350,000원",
+                        highlight: false
+                    },
+                    {
+                        icon: "🎯",
+                        title: "할인율",
+                        description: "출고가 대비 얼마나 할인되는지 보여줘요",
+                        example: "예: 40% 할인",
+                        highlight: false
+                    },
+                    {
+                        icon: "💳",
+                        title: "월 납부금",
+                        description: "기기값 + 요금제를 합친 실제 월 납부 금액",
+                        example: "예: 월 65,000원",
+                        highlight: true
+                    }
+                ]
+            };
             
-            const { priceInfo } = state.config;
+            const priceInfo = state.config?.priceInfo || defaultPriceInfo;
             
             // 제목 업데이트
-            utils.setElementContent('#priceInfoTitle', priceInfo.title || '💰 상품 카드 가격 정보');
-            utils.setElementContent('#priceInfoSubtitle', priceInfo.subtitle || '각 숫자가 의미하는 바를 확인해보세요');
+            utils.setElementContent('#priceInfoTitle', priceInfo.title);
+            utils.setElementContent('#priceInfoSubtitle', priceInfo.subtitle);
             
             // 정보 카드들 생성
             if (priceInfo.cards && Array.isArray(priceInfo.cards)) {
@@ -468,7 +568,6 @@
         },
 
         updateProductsForRegion() {
-            // 지역별 상품 필터링 로직 (필요시 구현)
             console.log('🔄 Updating products for region:', state.selectedRegion);
             this.renderProducts();
         },
@@ -486,6 +585,12 @@
             loadingElement.style.display = 'none';
             gridElement.style.display = 'grid';
             gridElement.innerHTML = '';
+            
+            // 상품이 없을 경우
+            if (filteredProducts.length === 0) {
+                gridElement.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--gray-500);">표시할 상품이 없습니다.</div>';
+                return;
+            }
             
             // 상품 카드 생성
             filteredProducts.slice(0, 4).forEach((product, index) => {
@@ -767,7 +872,10 @@
 
         // 이벤트 핸들러들
         handleProductClick(product) {
-            if (!state.config?.urls?.product) return;
+            if (!state.config?.urls?.product) {
+                window.open('https://nofee.team/ai', '_blank');
+                return;
+            }
             
             const params = new URLSearchParams({
                 model: product.model || "",
@@ -787,9 +895,9 @@
         },
 
         handleBrandClick(brandName) {
-            if (!state.config?.urls?.brand) return;
+            const baseUrl = state.config?.urls?.brand || 'https://nofee.team/more';
             
-            const url = new URL(state.config.urls.brand);
+            const url = new URL(baseUrl);
             url.searchParams.set('brand', brandName);
             window.open(url.toString(), '_blank');
         },
@@ -959,7 +1067,7 @@
     // 🚀 메인 초기화 함수
     async function initNofeeMain() {
         try {
-            console.log('🚀 노피 메인페이지 v3.0 초기화 시작 (완전 데이터 의존형)');
+            console.log('🚀 노피 메인페이지 v3.1 초기화 시작 (에러 핸들링 개선)');
             
             // 모든 데이터 로드 및 UI 초기화
             await dataLoader.loadAllData();
@@ -968,12 +1076,12 @@
             window.nofeeState = state;
             window.selectBrand = (brand) => dataLoader.handleBrandClick(brand);
             
-            console.log('✅ 노피 메인페이지 v3.0 초기화 완료');
+            console.log('✅ 노피 메인페이지 v3.1 초기화 완료');
             
             // 초기화 완료 이벤트
             window.dispatchEvent(new CustomEvent('nofeeMainReady', {
                 detail: { 
-                    version: '3.0', 
+                    version: '3.1', 
                     timestamp: Date.now(),
                     dataLoaded: state.isDataLoaded,
                     errors: state.loadingErrors
