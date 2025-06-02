@@ -756,16 +756,16 @@
     function extractProductDataFromDOM(productCard) {
         try {
             const data = {
-                model: '',
+                model_name: '',
                 carrier: '',
                 brand: '',
-                type: '',
-                support: '',
-                total: '',
-                plan: '',
-                installment: '',
+                contract_type: '',
+                subsidy_type: '',
+                total_monthly_payment: '',
+                plan_effective_monthly_payment: '',
+                device_monthly_payment: '',
                 originPrice: '',
-                principal: '',
+                device_principal: '',
                 discount: '',
                 discountRate: ''
             };
@@ -773,7 +773,7 @@
             // 모델명 추출
             const titleElement = productCard.querySelector('.product-title');
             if (titleElement) {
-                data.model = titleElement.textContent.trim();
+                data.model_name = titleElement.textContent.trim();
             }
             
             // 메타 태그에서 정보 추출
@@ -781,14 +781,14 @@
             if (metaTags.length >= 4) {
                 data.carrier = metaTags[0].textContent.trim();
                 data.brand = metaTags[1].textContent.trim();
-                data.type = metaTags[2].textContent.trim();
-                data.support = metaTags[3].textContent.trim();
+                data.contract_type = metaTags[2].textContent.trim();
+                data.subsidy_type = metaTags[3].textContent.trim();
             }
             
             // 월 납부금 추출
             const priceValueElement = productCard.querySelector('.price-value');
             if (priceValueElement) {
-                data.total = priceValueElement.textContent.replace(/[^\d]/g, '');
+                data.total_monthly_payment = priceValueElement.textContent.replace(/[^\d]/g, '');
             }
             
             // 가격 상세 정보 추출
@@ -803,11 +803,11 @@
                     if (label.includes('기기값')) {
                         data.originPrice = numValue;
                     } else if (label.includes('할부원금')) {
-                        data.installment = numValue;
+                        data.device_monthly_payment = numValue;
                     } else if (label.includes('요금제')) {
-                        data.plan = numValue;
+                        data.plan_effective_monthly_payment = numValue;
                     } else if (label.includes('지원금')) {
-                        data.principal = numValue;
+                        data.device_principal = numValue;
                         // 할인율 추출 (괄호 안의 퍼센트)
                         const discountMatch = value.match(/\((\d+)%\)/);
                         if (discountMatch) {

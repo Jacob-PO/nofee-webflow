@@ -69,7 +69,7 @@
             return phoneRegex.test(phone.replace(/-/g, ''));
         },
 
-        transformProducts: (data) => {
+        transformProduct: (item) => {
             const modelMap = {
                 'S25-256': '갤럭시 S25 256GB',
                 'S25플러스-256': '갤럭시 S25 플러스 256GB',
@@ -94,24 +94,25 @@
             const typeMap = { '이동': '번호이동', '기변': '기기변경' };
             const supportMap = { '공시': '공시지원', '선약': '선택약정' };
 
-            if (!Array.isArray(data)) return [];
+            const transformed = { ...item };
+            transformed.carrier = carrierMap[item.carrier] || item.carrier;
+            transformed.type = typeMap[item.contract_type] || item.contract_type;
+            transformed.support = supportMap[item.subsidy_type] || item.subsidy_type;
+            transformed.model = modelMap[item.model_name] || item.model_name;
+            transformed.principal = item.device_principal || 0;
+            transformed.plan_name = item.plan_monthly_payment || 0;
+            transformed.change_plan = item.post_plan_monthly_payment || 0;
+            transformed.contract_period = item.contract_months || 0;
+            transformed.plan_period = item.plan_required_months || 0;
+            transformed.plan = item.plan_effective_monthly_payment || 0;
+            transformed.installment = item.device_monthly_payment || 0;
+            transformed.total = item.total_monthly_payment || 0;
+            return transformed;
+        },
 
-            return data.map(item => ({
-                date: item.date,
-                carrier: carrierMap[item.carrier] || item.carrier,
-                brand: item.brand || '',
-                type: typeMap[item.contract_type] || item.contract_type,
-                support: supportMap[item.subsidy_type] || item.subsidy_type,
-                model: modelMap[item.model_name] || item.model_name,
-                principal: item.device_principal || 0,
-                plan_name: item.plan_monthly_payment || 0,
-                change_plan: item.post_plan_monthly_payment || 0,
-                contract_period: item.contract_months || 0,
-                plan_period: item.plan_required_months || 0,
-                plan: item.plan_effective_monthly_payment || 0,
-                installment: item.device_monthly_payment || 0,
-                total: item.total_monthly_payment || 0
-            }));
+        transformProducts: (data) => {
+            if (!Array.isArray(data)) return [];
+            return data.map(utils.transformProduct);
         }
     };
     
@@ -631,25 +632,32 @@
         
         checkPreSelectedProduct: () => {
             const params = new URLSearchParams(window.location.search);
-            const model = params.get('model');
+            const modelName = params.get('model_name');
             const carrier = params.get('carrier');
-            const type = params.get('type');
-            
-            if (model && carrier && type) {
-                state.selectedProduct = {
-                    model: params.get('model') || '',
-                    carrier: params.get('carrier') || '',
-                    type: params.get('type') || '',
-                    support: params.get('support') || '',
-                    principal: params.get('principal') || '',
+            const contractType = params.get('contract_type');
+
+            if (modelName && carrier && contractType) {
+                const rawProduct = {
+                    model_name: modelName,
+                    carrier,
+                    contract_type: contractType,
+                    subsidy_type: params.get('subsidy_type') || '',
                     brand: params.get('brand') || '',
+                    device_price_input: params.get('device_price_input') || '',
                     plan_name: params.get('plan_name') || '',
-                    plan_period: params.get('plan_period') || '',
-                    plan: params.get('plan') || '',
-                    installment: params.get('installment') || '',
-                    total: params.get('total') || ''
+                    contract_months: params.get('contract_months') || '',
+                    device_principal: params.get('device_principal') || '',
+                    plan_monthly_payment: params.get('plan_monthly_payment') || '',
+                    post_plan_monthly_payment: params.get('post_plan_monthly_payment') || '',
+                    plan_required_months: params.get('plan_required_months') || '',
+                    optional_discount_ratio: params.get('optional_discount_ratio') || '',
+                    device_monthly_payment: params.get('device_monthly_payment') || '',
+                    plan_effective_monthly_payment: params.get('plan_effective_monthly_payment') || '',
+                    total_monthly_payment: params.get('total_monthly_payment') || '',
+                    storage: params.get('storage') || ''
                 };
-                
+
+                state.selectedProduct = utils.transformProduct(rawProduct);
                 state.hasPreSelectedProduct = true;
                 return true;
             }

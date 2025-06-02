@@ -87,7 +87,7 @@
     return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
   }
 
-  fetch('https://jacob-po.github.io/products-data/products.json')
+  fetch('https://jacob-po.github.io/nofee-webflow/data/products.json')
     .then(res => res.json())
     .then(products => {
       if (!history.length) {
@@ -118,19 +118,24 @@
         `;
         card.onclick = () => {
           const params = new URLSearchParams({
-            model: matched.model || '',
+            date: matched.date || '',
             carrier: matched.carrier || '',
-            type: matched.type || '',
-            support: matched.support || '',
-            brand: matched.brand || '',
-            principal: matched.principal || 0,
+            model_name: matched.model_name || '',
+            contract_type: matched.contract_type || '',
+            device_price_input: matched.device_price_input || 0,
+            subsidy_type: matched.subsidy_type || '',
             plan_name: matched.plan_name || '',
-            change_plan: matched.change_plan || '',
-            contract_period: matched.contract_period || '',
-            plan_period: matched.plan_period || '',
-            plan: matched.plan || 0,
-            installment: matched.installment || 0,
-            total: matched.total || 0
+            contract_months: matched.contract_months || 0,
+            device_principal: matched.device_principal || 0,
+            plan_monthly_payment: matched.plan_monthly_payment || 0,
+            post_plan_monthly_payment: matched.post_plan_monthly_payment || 0,
+            plan_required_months: matched.plan_required_months || 0,
+            optional_discount_ratio: matched.optional_discount_ratio || 0,
+            device_monthly_payment: matched.device_monthly_payment || 0,
+            plan_effective_monthly_payment: matched.plan_effective_monthly_payment || 0,
+            total_monthly_payment: matched.total_monthly_payment || 0,
+            brand: matched.brand || '',
+            storage: matched.storage || ''
           }).toString();
           window.location.href = 'https://phone.nofee.team/apply?' + params;
         };
