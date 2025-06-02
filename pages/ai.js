@@ -31,8 +31,10 @@
     };
     
     // GitHub 저장소 설정
-    const basePath = window.location.pathname.startsWith('/nofee-webflow') ? '/nofee-webflow' : '';
-    const GITHUB_BASE_URL = window.location.origin + basePath;
+    // 스크립트 소스 기준으로 GitHub Pages 루트 계산
+    const scriptUrl = new URL(document.currentScript.src);
+    const basePath = scriptUrl.pathname.split('/').slice(0, -2).join('/');
+    const GITHUB_BASE_URL = scriptUrl.origin + basePath;
     // products.json이 같은 저장소에 있는 경우:
     const PRODUCTS_DATA_URL = `${GITHUB_BASE_URL}/data/products.json`;
     const REGIONS_DATA_URL = `${GITHUB_BASE_URL}/data/regions.json`;
