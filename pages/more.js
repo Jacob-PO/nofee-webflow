@@ -1,6 +1,39 @@
 // 🔍 노피 더보기(상품검색) 페이지 스크립트 - GitHub 관리용
 (function() {
     'use strict';
+
+    // 🐛 임시 디버깅 코드 - 배포 전 제거
+    (function debugUrls() {
+        console.log('🔍 현재 페이지 정보:');
+        console.log('  - Origin:', window.location.origin);
+        console.log('  - Pathname:', window.location.pathname);
+        console.log('  - Host:', window.location.host);
+
+        const basePath = window.location.pathname.startsWith('/nofee-webflow') ? '/nofee-webflow' : '';
+        console.log('  - Base Path:', basePath);
+
+        const githubBaseUrl = window.location.origin + basePath;
+        console.log('  - GitHub Base URL:', githubBaseUrl);
+
+        const testUrls = [
+            `${githubBaseUrl}/data/products.json`,
+            `/data/products.json`,
+            `https://raw.githubusercontent.com/jacob-po/nofee-webflow/main/data/products.json`,
+            `https://raw.githubusercontent.com/jacob-po/products-data/main/products.json`
+        ];
+
+        console.log('🧪 테스트할 URL 목록:');
+        testUrls.forEach((url, index) => {
+            console.log(`  ${index + 1}. ${url}`);
+            fetch(url, { method: 'HEAD' })
+                .then(response => {
+                    console.log(`✅ URL ${index + 1} 응답: ${response.status} ${response.statusText}`);
+                })
+                .catch(error => {
+                    console.log(`❌ URL ${index + 1} 실패: ${error.message}`);
+                });
+        });
+    })();
     
     // 🎯 전역 상태 관리
     const state = {
@@ -29,13 +62,22 @@
         searchTimer: null
     };
     
-    // GitHub 저장소 설정 (AI 상담 페이지와 동일하게)
-    const basePath = window.location.pathname.startsWith('/nofee-webflow') ? '/nofee-webflow' : '';
-    const GITHUB_BASE_URL = window.location.origin + basePath;
-    const PRODUCTS_DATA_URL = `${GITHUB_BASE_URL}/data/products.json`;
-    const MODELS_DATA_URL = `${GITHUB_BASE_URL}/data/models.json`;
+    // 🔥 실제 데이터 파일 위치 확인 필요!
+    // 다음 중 실제로 작동하는 URL을 확인하여 사용하세요:
 
-    // 백업 URL 설정 (AI 상담 페이지 방식 참고)
+    // 옵션 1: 현재 웹사이트와 같은 도메인 (권장)
+    const PRODUCTS_DATA_URL = `/data/products.json`;
+    const MODELS_DATA_URL = `/data/models.json`;
+
+    // 옵션 2: GitHub Raw URLs (CORS 문제 없음)
+    // const PRODUCTS_DATA_URL = 'https://raw.githubusercontent.com/jacob-po/nofee-webflow/main/data/products.json';
+    // const MODELS_DATA_URL = 'https://raw.githubusercontent.com/jacob-po/nofee-webflow/main/data/models.json';
+
+    // 옵션 3: 다른 저장소 (실제 파일 위치 확인 후)
+    // const PRODUCTS_DATA_URL = 'https://raw.githubusercontent.com/jacob-po/products-data/main/products.json';
+    // const MODELS_DATA_URL = 'https://raw.githubusercontent.com/jacob-po/products-data/main/models.json';
+
+    // 백업 URL들도 동일하게 수정
     const BACKUP_PRODUCTS_URL = 'https://raw.githubusercontent.com/jacob-po/nofee-webflow/main/data/products.json';
     const BACKUP_MODELS_URL = 'https://raw.githubusercontent.com/jacob-po/nofee-webflow/main/data/models.json';
 
@@ -517,44 +559,120 @@
                 state.isLoading = true;
                 ui.renderLoading();
 
-                console.log('데이터 로딩 시작...');
-                console.log('Products URL:', PRODUCTS_DATA_URL);
-                console.log('Models URL:', MODELS_DATA_URL);
+                console.log('🔍 데이터 로딩 시작...');
 
-                const [productData, modelData] = await Promise.all([
-                    loadWithFallback(PRODUCTS_DATA_URL, BACKUP_PRODUCTS_URL, 'products'),
-                    loadWithFallback(MODELS_DATA_URL, BACKUP_MODELS_URL, 'models').catch(error => {
-                        console.warn('Models 데이터 로드 실패 (계속 진행):', error);
-                        return {};
-                    })
-                ]);
+                // URL 유효성 사전 검사
+                const urlsToTest = [
+                    { name: 'Products (Primary)', url: PRODUCTS_DATA_URL },
+                    { name: 'Products (Backup)', url: BACKUP_PRODUCTS_URL },
+                    { name: 'Models (Primary)', url: MODELS_DATA_URL },
+                    { name: 'Models (Backup)', url: BACKUP_MODELS_URL }
+                ];
 
+                console.log('📡 테스트할 URL들:');
+                urlsToTest.forEach(item => {
+                    console.log(`  ${item.name}: ${item.url}`);
+                });
+
+                // 단계별 로딩 시도
+                let productData = null;
+                let modelData = {};
+
+                // 1. Products 데이터 로드
+                try {
+                    console.log('⏳ Products 데이터 로드 시도...');
+                    const response = await fetch(PRODUCTS_DATA_URL);
+                    console.log(`📊 Primary Products URL 응답: ${response.status} ${response.statusText}`);
+
+                    if (!response.ok) {
+                        throw new Error(`Primary URL failed: ${response.status}`);
+                    }
+
+                    productData = await response.json();
+                    console.log(`✅ Primary Products 로드 성공: ${productData.length}개`);
+
+                } catch (primaryError) {
+                    console.warn('⚠️ Primary Products URL 실패:', primaryError.message);
+                    console.log('🔄 Backup Products URL 시도...');
+
+                    try {
+                        const response = await fetch(BACKUP_PRODUCTS_URL);
+                        console.log(`📊 Backup Products URL 응답: ${response.status} ${response.statusText}`);
+
+                        if (!response.ok) {
+                            throw new Error(`Backup URL failed: ${response.status}`);
+                        }
+
+                        productData = await response.json();
+                        console.log(`✅ Backup Products 로드 성공: ${productData.length}개`);
+
+                    } catch (backupError) {
+                        console.error('❌ 모든 Products URL 실패');
+                        console.error('Primary 에러:', primaryError.message);
+                        console.error('Backup 에러:', backupError.message);
+                        throw new Error('Products 데이터를 로드할 수 없습니다');
+                    }
+                }
+
+                // 2. Models 데이터 로드 (선택사항)
+                try {
+                    console.log('⏳ Models 데이터 로드 시도...');
+                    const response = await fetch(MODELS_DATA_URL);
+                    console.log(`📊 Primary Models URL 응답: ${response.status} ${response.statusText}`);
+
+                    if (response.ok) {
+                        modelData = await response.json();
+                        console.log(`✅ Primary Models 로드 성공: ${Object.keys(modelData).length}개`);
+                    } else {
+                        throw new Error(`Primary Models URL failed: ${response.status}`);
+                    }
+
+                } catch (modelsError) {
+                    console.warn('⚠️ Models 데이터 로드 실패 (계속 진행):', modelsError.message);
+
+                    try {
+                        const response = await fetch(BACKUP_MODELS_URL);
+                        console.log(`📊 Backup Models URL 응답: ${response.status} ${response.statusText}`);
+
+                        if (response.ok) {
+                            modelData = await response.json();
+                            console.log(`✅ Backup Models 로드 성공: ${Object.keys(modelData).length}개`);
+                        }
+                    } catch (backupModelsError) {
+                        console.warn('⚠️ Backup Models도 실패, 기본값 사용');
+                    }
+                }
+
+                // 3. 데이터 할당
                 state.products = productData;
                 modelsData = modelData || {};
 
-                console.log(`✅ 상품 데이터 로드 완료: ${productData.length}개`);
-                console.log(`✅ 모델 데이터 로드 완료: ${Object.keys(modelsData).length}개`);
+                console.log('📈 최종 로드 결과:');
+                console.log(`  - Products: ${state.products.length}개`);
+                console.log(`  - Models: ${Object.keys(modelsData).length}개`);
 
-                // URL에서 필터 로드
+                // 4. 렌더링
                 urlManager.loadFiltersFromURL();
-
-                // 초기 렌더링
                 ui.renderProducts();
 
                 return true;
 
             } catch (error) {
-                console.error('❌ 데이터 로드 실패:', error);
-                console.error('Error details:', {
+                console.error('💥 데이터 로드 완전 실패:', error);
+                console.error('상세 에러 정보:', {
                     message: error.message,
                     stack: error.stack,
-                    productsUrl: PRODUCTS_DATA_URL,
-                    modelsUrl: MODELS_DATA_URL
+                    timestamp: new Date().toISOString(),
+                    userAgent: navigator.userAgent,
+                    currentUrl: window.location.href
                 });
+
                 ui.renderError(`데이터 로드 실패: ${error.message}`);
                 return false;
+
             } finally {
                 state.isLoading = false;
+                console.log('🏁 데이터 로딩 프로세스 완료');
             }
         },
         
