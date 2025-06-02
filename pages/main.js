@@ -282,37 +282,44 @@
             const actionsElement = document.querySelector('.quick-actions');
             if (!actionsElement) return;
 
+            const stats = this.calculateStats();
+            const savings = Math.round(stats.avgTotal * 0.3); // 평균 30% 절약 가정
+
             actionsElement.innerHTML = `
                 <div class="actions-grid">
-                    <div class="action-card" data-action="ai">
-                        <div class="action-icon">🤖</div>
-                        <div class="action-content">
-                            <div class="action-title">AI 상담</div>
-                            <div class="action-subtitle">맞춤 추천받기</div>
-                        </div>
-                        <div class="action-arrow">→</div>
-                    </div>
-                    <div class="action-card" data-action="products">
-                        <div class="action-icon">📱</div>
-                        <div class="action-content">
-                            <div class="action-title">전체 상품</div>
-                            <div class="action-subtitle">모든 상품 보기</div>
-                        </div>
-                        <div class="action-arrow">→</div>
-                    </div>
-                    <div class="action-card" data-action="compare">
-                        <div class="action-icon">📊</div>
-                        <div class="action-content">
-                            <div class="action-title">요금제 비교</div>
-                            <div class="action-subtitle">통신사별 비교</div>
-                        </div>
-                        <div class="action-arrow">→</div>
-                    </div>
-                    <div class="action-card" data-action="uniform">
+                    <div class="action-card hot" data-action="ai">
+                        <div class="action-badge">🔥 HOT</div>
                         <div class="action-icon">🎯</div>
                         <div class="action-content">
-                            <div class="action-title">균일가 시스템</div>
-                            <div class="action-subtitle">전국 동일 최저가</div>
+                            <div class="action-title">내 폰 최저가 찾기</div>
+                            <div class="action-subtitle">AI가 30초만에 찾아줌</div>
+                        </div>
+                        <div class="action-arrow">→</div>
+                    </div>
+                    <div class="action-card trending" data-action="products">
+                        <div class="action-badge">📈 실시간</div>
+                        <div class="action-icon">💰</div>
+                        <div class="action-content">
+                            <div class="action-title">지금 가장 핫한 폰</div>
+                            <div class="action-subtitle">할인폭 큰 순으로 정렬</div>
+                        </div>
+                        <div class="action-arrow">→</div>
+                    </div>
+                    <div class="action-card save" data-action="compare">
+                        <div class="action-badge">💸 절약</div>
+                        <div class="action-icon">📊</div>
+                        <div class="action-content">
+                            <div class="action-title">월 ${utils.formatKRW(savings)} 아끼기</div>
+                            <div class="action-subtitle">통신비 절약 꿀팁</div>
+                        </div>
+                        <div class="action-arrow">→</div>
+                    </div>
+                    <div class="action-card guarantee" data-action="uniform">
+                        <div class="action-badge">✅ 보장</div>
+                        <div class="action-icon">🏆</div>
+                        <div class="action-content">
+                            <div class="action-title">전국 성지가격 보장</div>
+                            <div class="action-subtitle">어디서나 동일 최저가</div>
                         </div>
                         <div class="action-arrow">→</div>
                     </div>
@@ -367,28 +374,31 @@
 
             myDataElement.innerHTML = `
                 <div class="section-header">
-                    <h2 class="section-title">내 활동</h2>
+                    <h2 class="section-title">나만의 혜택</h2>
                 </div>
                 <div class="my-data-grid">
-                    <div class="data-card" data-action="recent">
-                        <div class="data-icon">👀</div>
+                    <div class="data-card special" data-action="recent">
+                        <div class="data-icon">⚡</div>
                         <div class="data-content">
-                            <div class="data-title">최근 본 상품</div>
-                            <div class="data-value">${recentCount}개</div>
+                            <div class="data-title">내가 찜한 폰들</div>
+                            <div class="data-value">${recentCount > 0 ? `${recentCount}개 대기중` : '아직 없음'}</div>
+                            <div class="data-badge">빠른 구매</div>
                         </div>
                     </div>
-                    <div class="data-card" data-action="favorites">
-                        <div class="data-icon">❤️</div>
+                    <div class="data-card vip" data-action="favorites">
+                        <div class="data-icon">💎</div>
                         <div class="data-content">
-                            <div class="data-title">관심 상품</div>
-                            <div class="data-value">${favoriteCount}개</div>
+                            <div class="data-title">VIP 전용 할인</div>
+                            <div class="data-value">${favoriteCount > 0 ? `${favoriteCount}개 혜택` : '지금 확인'}</div>
+                            <div class="data-badge">추가 할인</div>
                         </div>
                     </div>
-                    <div class="data-card" data-action="consultation">
-                        <div class="data-icon">💬</div>
+                    <div class="data-card expert" data-action="consultation">
+                        <div class="data-icon">🎯</div>
                         <div class="data-content">
-                            <div class="data-title">상담 내역</div>
-                            <div class="data-value">확인하기</div>
+                            <div class="data-title">전문가 1:1 상담</div>
+                            <div class="data-value">무료 상담받기</div>
+                            <div class="data-badge">맞춤 추천</div>
                         </div>
                     </div>
                 </div>
