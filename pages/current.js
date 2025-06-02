@@ -1,4 +1,4 @@
-// 📱 노피 최근 본 상품 페이지 스크립트 - GitHub 관리용
+// 📱 노피 최근 본 상품 페이지 스크립트 - 심플 버전
 (function() {
     'use strict';
     
@@ -9,11 +9,7 @@
         viewedHistory: [],
         allProducts: [],
         matchedProducts: [],
-        isLoading: false,
-        sortOrder: 'recent', // recent, name, price
-        filterBrand: 'all',
-        currentPage: 1,
-        itemsPerPage: 12
+        isLoading: false
     };
     
     // GitHub 저장소 설정
@@ -50,19 +46,6 @@
             const mm = String(d.getMonth() + 1).padStart(2, '0');
             const dd = String(d.getDate()).padStart(2, '0');
             return `${yyyy}.${mm}.${dd}`;
-        },
-        
-        // 디바운스
-        debounce: (func, wait) => {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
         },
         
         // 로컬스토리지 안전하게 읽기
@@ -204,7 +187,8 @@
                     }
                     return null;
                 })
-                .filter(Boolean); // null 제거
+                .filter(Boolean) // null 제거
+                .sort((a, b) => b.viewedTime - a.viewedTime); // 최신순 정렬
             
             console.log(`매칭된 상품 ${state.matchedProducts.length}개`);
         },
@@ -237,53 +221,6 @@
                 ui.renderProducts();
                 ui.updateStats();
             }
-        }
-    };
-    
-    // 🔍 필터링 및 정렬
-    const filterAndSort = {
-        // 브랜드 필터링
-        filterByBrand: (products) => {
-            if (state.filterBrand === 'all') return products;
-            
-            return products.filter(product => {
-                const brandInfo = getBrandInfo(product.brand);
-                return brandInfo.displayName === state.filterBrand;
-            });
-        },
-        
-        // 정렬
-        sortProducts: (products) => {
-            const sorted = [...products];
-            
-            switch (state.sortOrder) {
-                case 'recent':
-                    // 최신순 (기본)
-                    sorted.sort((a, b) => b.viewedTime - a.viewedTime);
-                    break;
-                case 'name':
-                    // 이름순
-                    sorted.sort((a, b) => a.model.localeCompare(b.model));
-                    break;
-                case 'price':
-                    // 가격순 (낮은 가격순)
-                    sorted.sort((a, b) => a.total - b.total);
-                    break;
-                case 'priceDesc':
-                    // 가격순 (높은 가격순)
-                    sorted.sort((a, b) => b.total - a.total);
-                    break;
-            }
-            
-            return sorted;
-        },
-        
-        // 필터와 정렬 적용
-        apply: () => {
-            let products = [...state.matchedProducts];
-            products = filterAndSort.filterByBrand(products);
-            products = filterAndSort.sortProducts(products);
-            return products;
         }
     };
     
@@ -340,54 +277,32 @@
         renderProducts: () => {
             if (!elements.productList) return;
             
-            // 필터와 정렬 적용
-            const filteredProducts = filterAndSort.apply();
-            
-            // 페이지네이션 적용
-            const startIndex = (state.currentPage - 1) * state.itemsPerPage;
-            const endIndex = startIndex + state.itemsPerPage;
-            const pageProducts = filteredProducts.slice(startIndex, endIndex);
-            
             // 리스트 초기화
             elements.productList.innerHTML = '';
             
-            if (pageProducts.length === 0) {
+            if (state.matchedProducts.length === 0) {
                 ui.renderEmptyState();
-                if (elements.pagination) {
-                    elements.pagination.style.display = 'none';
-                }
                 return;
             }
             
             // 상품 카드 추가
-            pageProducts.forEach((product, index) => {
+            state.matchedProducts.forEach((product, index) => {
                 const card = ui.createProductCard(product);
                 card.style.animationDelay = `${index * 0.05}s`;
                 elements.productList.appendChild(card);
             });
-            
-            // 페이지네이션 업데이트
-            ui.updatePagination(filteredProducts.length);
         },
         
         // 빈 상태 렌더링
         renderEmptyState: () => {
-            const emptyHTML = state.viewedHistory.length === 0 
-                ? `
-                    <div class="empty-state">
-                        <div class="empty-icon">🔍</div>
-                        <h3>최근 본 상품이 없습니다</h3>
-                        <p>상품을 둘러보고 오세요!</p>
-                        <a href="/" class="empty-button">상품 보러가기</a>
-                    </div>
-                `
-                : `
-                    <div class="empty-state">
-                        <div class="empty-icon">📱</div>
-                        <h3>조건에 맞는 상품이 없습니다</h3>
-                        <p>다른 필터를 선택해보세요</p>
-                    </div>
-                `;
+            const emptyHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">🔍</div>
+                    <h3>최근 본 상품이 없습니다</h3>
+                    <p>상품을 둘러보고 오세요!</p>
+                    <a href="/" class="empty-button">상품 보러가기</a>
+                </div>
+            `;
             
             elements.productList.innerHTML = emptyHTML;
         },
@@ -397,66 +312,6 @@
             if (elements.totalCount) {
                 elements.totalCount.textContent = state.matchedProducts.length;
             }
-            
-            if (elements.filteredCount) {
-                const filtered = filterAndSort.apply();
-                elements.filteredCount.textContent = filtered.length;
-            }
-        },
-        
-        // 페이지네이션 업데이트
-        updatePagination: (totalItems) => {
-            if (!elements.pagination) return;
-            
-            const totalPages = Math.ceil(totalItems / state.itemsPerPage);
-            
-            if (totalPages <= 1) {
-                elements.pagination.style.display = 'none';
-                return;
-            }
-            
-            elements.pagination.style.display = 'flex';
-            elements.pagination.innerHTML = '';
-            
-            // 이전 버튼
-            const prevBtn = document.createElement('button');
-            prevBtn.className = 'page-btn';
-            prevBtn.textContent = '‹';
-            prevBtn.disabled = state.currentPage === 1;
-            prevBtn.onclick = () => ui.changePage(state.currentPage - 1);
-            elements.pagination.appendChild(prevBtn);
-            
-            // 페이지 번호
-            const maxVisiblePages = 5;
-            let startPage = Math.max(1, state.currentPage - Math.floor(maxVisiblePages / 2));
-            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-            
-            if (endPage - startPage < maxVisiblePages - 1) {
-                startPage = Math.max(1, endPage - maxVisiblePages + 1);
-            }
-            
-            for (let i = startPage; i <= endPage; i++) {
-                const pageBtn = document.createElement('button');
-                pageBtn.className = `page-btn ${i === state.currentPage ? 'active' : ''}`;
-                pageBtn.textContent = i;
-                pageBtn.onclick = () => ui.changePage(i);
-                elements.pagination.appendChild(pageBtn);
-            }
-            
-            // 다음 버튼
-            const nextBtn = document.createElement('button');
-            nextBtn.className = 'page-btn';
-            nextBtn.textContent = '›';
-            nextBtn.disabled = state.currentPage === totalPages;
-            nextBtn.onclick = () => ui.changePage(state.currentPage + 1);
-            elements.pagination.appendChild(nextBtn);
-        },
-        
-        // 페이지 변경
-        changePage: (page) => {
-            state.currentPage = page;
-            ui.renderProducts();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
         },
         
         // 상품 클릭 처리
@@ -527,21 +382,6 @@
     
     // 🎮 이벤트 핸들러
     const eventHandlers = {
-        // 정렬 변경
-        handleSortChange: (e) => {
-            state.sortOrder = e.target.value;
-            state.currentPage = 1;
-            ui.renderProducts();
-        },
-        
-        // 브랜드 필터 변경
-        handleBrandFilter: (e) => {
-            state.filterBrand = e.target.value;
-            state.currentPage = 1;
-            ui.renderProducts();
-            ui.updateStats();
-        },
-        
         // 전체 삭제
         handleClearAll: () => {
             dataManager.clearAll();
@@ -562,12 +402,8 @@
             elements = {
                 productList: document.getElementById('productList'),
                 totalCount: document.getElementById('totalCount'),
-                filteredCount: document.getElementById('filteredCount'),
-                sortSelect: document.getElementById('sortSelect'),
-                brandFilter: document.getElementById('brandFilter'),
                 clearAllBtn: document.getElementById('clearAllBtn'),
-                refreshBtn: document.getElementById('refreshBtn'),
-                pagination: document.getElementById('pagination')
+                refreshBtn: document.getElementById('refreshBtn')
             };
             
             // 로딩 표시
@@ -615,16 +451,6 @@
     
     // 🎯 이벤트 리스너 설정
     function setupEventListeners() {
-        // 정렬 변경
-        if (elements.sortSelect) {
-            elements.sortSelect.addEventListener('change', eventHandlers.handleSortChange);
-        }
-        
-        // 브랜드 필터
-        if (elements.brandFilter) {
-            elements.brandFilter.addEventListener('change', eventHandlers.handleBrandFilter);
-        }
-        
         // 전체 삭제 버튼
         if (elements.clearAllBtn) {
             elements.clearAllBtn.addEventListener('click', eventHandlers.handleClearAll);
@@ -634,18 +460,6 @@
         if (elements.refreshBtn) {
             elements.refreshBtn.addEventListener('click', eventHandlers.handleRefresh);
         }
-        
-        // 키보드 단축키
-        document.addEventListener('keydown', (e) => {
-            // ESC 키로 필터 초기화
-            if (e.key === 'Escape') {
-                state.filterBrand = 'all';
-                state.sortOrder = 'recent';
-                if (elements.brandFilter) elements.brandFilter.value = 'all';
-                if (elements.sortSelect) elements.sortSelect.value = 'recent';
-                ui.renderProducts();
-            }
-        });
         
         // 페이지 가시성 변경 감지
         document.addEventListener('visibilitychange', () => {
@@ -658,25 +472,6 @@
             }
         });
     }
-    
-    // 📱 반응형 처리
-    function handleResize() {
-        const width = window.innerWidth;
-        
-        // 모바일에서는 한 줄에 1개
-        if (width < 768) {
-            state.itemsPerPage = 6;
-        } else {
-            state.itemsPerPage = 12;
-        }
-        
-        // 페이지네이션 재계산
-        const filtered = filterAndSort.apply();
-        ui.updatePagination(filtered.length);
-    }
-    
-    // 리사이즈 이벤트 (디바운스 적용)
-    window.addEventListener('resize', utils.debounce(handleResize, 250));
     
     // DOM 준비 확인
     if (document.readyState === 'loading') {
