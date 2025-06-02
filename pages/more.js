@@ -4,6 +4,7 @@
     
     // 🎯 전역 상태 관리
     let state = {
+        config: null,
         products: [],
         filteredProducts: [],
         currentPage: 1,
@@ -27,6 +28,7 @@
     
     // 📂 데이터 URL 설정
     const DATA_URLS = {
+        config: `${GITHUB_BASE_URL}/data/config.json`,
         products: `${GITHUB_BASE_URL}/data/products.json`,
         brands: `${GITHUB_BASE_URL}/data/brands.json`,
         models: `${GITHUB_BASE_URL}/data/models.json`
@@ -107,6 +109,28 @@
             return data.map(utils.transformProduct);
         },
 
+        showElement: (selector) => {
+            const element = document.querySelector(selector);
+            if (element) {
+                element.style.display = 'block';
+                element.style.opacity = '0';
+                element.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    element.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                    element.style.opacity = '1';
+                    element.style.transform = 'translateY(0)';
+                }, 50);
+            }
+        },
+
+        hideElement: (selector) => {
+            const element = document.querySelector(selector);
+            if (element) {
+                element.style.display = 'none';
+            }
+        },
+
         getUrlParams: () => {
             const params = new URLSearchParams(window.location.search);
             return {
@@ -151,6 +175,9 @@
 
                 // 병렬로 모든 데이터 로드
                 const results = await Promise.allSettled([
+                    this.fetchData(DATA_URLS.config, 'config', true).then(data => {
+                        state.config = data || { urls: { ai: 'https://nofee.team/ai', products: 'https://nofee.team/more' } };
+                    }),
                     this.fetchData(DATA_URLS.products, 'products').then(data => {
                         state.products = utils.transformProducts(data || []);
                     }),
