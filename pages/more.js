@@ -1,8 +1,8 @@
-// 🚀 노피 상품검색 - GitHub 관리용 v3.1
+// 🚀 노피 상품검색 - GitHub 관리용 v3.2
 // GitHub: https://github.com/Jacob-PO/nofee-webflow/blob/main/pages/more.js
-// 시스템 기본 Select + 상품 클릭 AI 페이지 이동 기능
+// HTML+CSS 통합 임베드 + 완전한 상품 데이터 전달
 
-console.log('🔥 more.js v3.1 로드 시작 - 상품 클릭 AI 이동 포함');
+console.log('🔥 more.js v3.2 로드 시작 - 완전한 상품 데이터 전달');
 
 // 🎯 즉시 실행 함수로 전역 오염 방지
 (function() {
@@ -97,35 +97,6 @@ console.log('🔥 more.js v3.1 로드 시작 - 상품 클릭 AI 이동 포함');
             const discountRate = Math.round((discount / origin) * 100);
             
             return { discount, discountRate };
-        },
-        
-        // 🤖 AI 페이지 이동을 위한 상품 데이터 준비
-        prepareProductDataForAI: (product) => {
-            const brandInfo = utils.getBrandInfo(product.brand);
-            const originPrice = product.originPrice || utils.getOriginPrice(product.model);
-            const { discount, discountRate } = utils.calculateDiscount(originPrice, product.principal);
-            
-            return {
-                // 기본 정보
-                model: product.model || '',
-                carrier: product.carrier || '',
-                brand: brandInfo.displayName || '',
-                type: product.type || '',
-                support: product.support || '',
-                
-                // 가격 정보
-                total: product.total.toString() || '0',
-                plan: product.plan.toString() || '0',
-                installment: product.installment.toString() || '0',
-                originPrice: originPrice.toString() || '0',
-                principal: product.principal.toString() || '0',
-                discount: discount.toString() || '0',
-                discountRate: discountRate.toString() || '0',
-                
-                // 추가 메타데이터
-                from: 'search',
-                timestamp: Date.now().toString()
-            };
         }
     };
     
@@ -252,16 +223,36 @@ console.log('🔥 more.js v3.1 로드 시작 - 상품 클릭 AI 이동 포함');
                 return;
             }
             
-            // 상품 카드 생성 (클릭 이벤트용 데이터 속성 추가)
+            // 상품 카드 생성 (완전한 데이터 속성 추가)
             productList.innerHTML = productsToShow.map((product, index) => {
                 const brandInfo = utils.getBrandInfo(product.brand);
                 const originPrice = product.originPrice || utils.getOriginPrice(product.model);
                 const { discount, discountRate } = utils.calculateDiscount(originPrice, product.principal);
                 
-                // AI 페이지로 전달할 데이터 준비
-                const aiData = utils.prepareProductDataForAI(product);
-                const dataAttributes = Object.entries(aiData)
-                    .map(([key, value]) => `data-${key}="${encodeURIComponent(value)}"`)
+                // AI 페이지로 전달할 완전한 데이터 준비
+                const completeData = {
+                    model: product.model || '',
+                    carrier: product.carrier || '',
+                    brand: brandInfo.displayName || '',
+                    type: product.type || '',
+                    support: product.support || '',
+                    total: product.total.toString() || '0',
+                    plan: product.plan.toString() || '0',
+                    installment: product.installment.toString() || '0',
+                    originPrice: originPrice.toString() || '0',
+                    principal: product.principal.toString() || '0',
+                    discount: discount.toString() || '0',
+                    discountRate: discountRate.toString() || '0',
+                    from: 'search',
+                    timestamp: Date.now().toString()
+                };
+                
+                // 모든 데이터를 data 속성으로 추가 (안전한 인코딩)
+                const dataAttributes = Object.entries(completeData)
+                    .map(([key, value]) => {
+                        const safeValue = String(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                        return `data-${key}="${safeValue}"`;
+                    })
                     .join(' ');
                 
                 return `
@@ -316,7 +307,7 @@ console.log('🔥 more.js v3.1 로드 시작 - 상품 클릭 AI 이동 포함');
             const hasMore = productsToShow.length < appState.filteredProducts.length;
             this.updateLoadMoreButton(hasMore);
             
-            console.log(`🎴 상품 카드 ${productsToShow.length}개 렌더링 완료`);
+            console.log(`🎴 상품 카드 ${productsToShow.length}개 렌더링 완료 (data 속성 포함)`);
         },
         
         updateLoadMoreButton(hasMore) {
@@ -484,7 +475,7 @@ console.log('🔥 more.js v3.1 로드 시작 - 상품 클릭 AI 이동 포함');
         filterManager.setFilter(category, value);
     };
     
-    console.log('✅ more.js v3.1 모듈 로드 완료 - 상품 클릭 AI 이동 기능 포함');
+    console.log('✅ more.js v3.2 모듈 로드 완료 - 완전한 상품 데이터 전달 기능');
     
 })();
 
