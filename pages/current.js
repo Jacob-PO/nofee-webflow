@@ -20,7 +20,6 @@
     const basePath = window.location.pathname.startsWith('/nofee-webflow') ? '/nofee-webflow' : '';
     const GITHUB_BASE_URL = window.location.origin + basePath;
     const PRODUCTS_DATA_URL = `${GITHUB_BASE_URL}/data/products.json`;
-    const CONFIG_DATA_URL = `${GITHUB_BASE_URL}/data/config.json`;
     
     // DOM 요소 캐싱
     let elements = {};
@@ -91,8 +90,8 @@
         transformProduct: (item) => {
             const modelMap = {
                 'S25-256': '갤럭시 S25 256GB',
-                'S25플러스-256': '갤럭시 S25 플러스 256GB',
-                'S25울트라-256': '갤럭시 S25 울트라 256GB',
+                'S25플러스-256': '갤럭시 S25+ 256GB',
+                'S25울트라-256': '갤럭시 S25 Ultra 256GB',
                 'S24FE': '갤럭시 S24 FE',
                 '플립6-256': '갤럭시 Z 플립6 256GB',
                 '플립5-256': '갤럭시 Z 플립5 256GB',
@@ -109,7 +108,7 @@
                 '시나모롤 키즈폰': '시나모롤 키즈폰',
                 '키즈폰 무너': '키즈폰 무너'
             };
-            const carrierMap = { SK: 'SKT', KT: 'KT', LG: 'LGU' };
+            const carrierMap = { SK: 'SKT', KT: 'KT', LG: 'LGU+' };
             const typeMap = { '이동': '번호이동', '기변': '기기변경' };
             const supportMap = { '공시': '공시지원', '선약': '선택약정' };
 
