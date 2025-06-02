@@ -1,676 +1,963 @@
-<!-- 🚀 노피 상품검색 - 웹플로우 임베드 최종 버전 -->
+<!-- 🚀 노피 상품검색 v3.2 - HTML+CSS 통합 버전 -->
+<!-- CSS 파일 없이 모든 스타일 포함, 안정적인 상품 클릭 -->
+
 <style>
-/* 🎨 네임스페이스 CSS - 웹플로우 호환 */
-.nofee-embed * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+/* 🎨 완전 독립적인 고급스러운 스타일 - 웹플로우 무시 */
+.nofee-v3 {
+    /* 기본 리셋 */
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    
+    /* 웹플로우 완전 무시 */
+    position: relative !important;
+    z-index: 999 !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    
+    /* 고급스러운 배경 */
+    background: linear-gradient(135deg, 
+        #667eea 0%, 
+        #764ba2 25%, 
+        #f093fb 50%, 
+        #f5576c 75%, 
+        #4facfe 100%) !important;
+    background-size: 400% 400% !important;
+    animation: gradientShift 15s ease infinite !important;
+    
+    /* 기본 폰트 */
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Pretendard', system-ui, sans-serif !important;
+    color: #ffffff !important;
+    line-height: 1.6 !important;
+    
+    /* 완전 표시 */
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
 }
 
-.nofee-embed {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #f8f9fa;
-    color: #333;
-    line-height: 1.6;
-    width: 100%;
-    min-height: 80vh;
-    padding: 20px;
+.nofee-v3 * {
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
-.nofee-embed .container {
-    max-width: 1200px;
-    margin: 0 auto;
+/* 🌈 애니메이션 */
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
-/* 페이지 헤더 */
-.nofee-embed .page-header {
-    text-align: center;
-    margin-bottom: 40px;
-}
-
-.nofee-embed .page-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: #5c27fe;
-    margin-bottom: 10px;
-}
-
-.nofee-embed .page-subtitle {
-    color: #666;
-    font-size: 1.1rem;
-}
-
-/* 필터 영역 */
-.nofee-embed .filters {
-    background: white;
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 30px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.nofee-embed .filter-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.nofee-embed .filter-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    background: white;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    transition: all 0.2s;
-    position: relative;
-}
-
-.nofee-embed .filter-button:hover {
-    border-color: #5c27fe;
-    background: #f8f7ff;
-}
-
-.nofee-embed .filter-button.active {
-    border-color: #5c27fe;
-    background: #5c27fe;
-    color: white;
-}
-
-.nofee-embed .filter-button.open {
-    border-color: #5c27fe;
-    background: #f8f7ff;
-}
-
-/* 드롭다운 메뉴 */
-.nofee-embed .dropdown-menu {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    background: white;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    min-width: 180px;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(-10px);
-    transition: all 0.2s;
-}
-
-.nofee-embed .dropdown-menu.show {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-}
-
-.nofee-embed .dropdown-menu button {
-    display: block;
-    width: 100%;
-    padding: 12px 16px;
-    border: none;
-    background: none;
-    text-align: left;
-    cursor: pointer;
-    transition: background 0.2s;
-    font-size: 14px;
-}
-
-.nofee-embed .dropdown-menu button:hover {
-    background: #f8f9fa;
-}
-
-.nofee-embed .dropdown-menu button.selected {
-    background: #5c27fe;
-    color: white;
-}
-
-/* 활성 필터 */
-.nofee-embed .active-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.nofee-embed .filter-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    background: #5c27fe;
-    color: white;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.nofee-embed .filter-tag .remove {
-    cursor: pointer;
-    font-weight: bold;
-    opacity: 0.8;
-}
-
-.nofee-embed .filter-tag .remove:hover {
-    opacity: 1;
-}
-
-/* 상품 개수 */
-.nofee-embed .product-count {
-    color: #666;
-    font-size: 14px;
-    margin-bottom: 20px;
-}
-
-/* 상품 리스트 */
-.nofee-embed .product-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 20px;
-    margin-bottom: 40px;
-}
-
-.nofee-embed .product-card {
-    background: white;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-    cursor: pointer;
-    transition: all 0.2s;
-    border: 1px solid transparent;
-    animation: nofeeCardFadeIn 0.5s ease forwards;
-    opacity: 0;
-    transform: translateY(20px);
-}
-
-.nofee-embed .product-card:hover {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-    transform: translateY(-2px);
-    border-color: #5c27fe;
-}
-
-@keyframes nofeeCardFadeIn {
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
     to {
         opacity: 1;
         transform: translateY(0);
     }
 }
 
-.nofee-embed .product-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    margin-bottom: 16px;
+@keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.1); }
+    50% { box-shadow: 0 0 40px rgba(255, 255, 255, 0.3); }
 }
 
-.nofee-embed .brand-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    color: white;
-    font-size: 18px;
+/* 🏗️ 메인 컨테이너 */
+.nofee-v3 .main-container {
+    max-width: 1400px !important;
+    margin: 0 auto !important;
+    padding: 40px 20px !important;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
-.nofee-embed .brand-icon.samsung {
-    background: linear-gradient(135deg, #1f4e8c, #2b6cb0);
+/* 🎯 헤더 섹션 */
+.nofee-v3 .hero-section {
+    text-align: center !important;
+    margin-bottom: 60px !important;
+    animation: slideInUp 0.8s ease-out !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
 }
 
-.nofee-embed .brand-icon.apple {
-    background: linear-gradient(135deg, #333, #666);
+.nofee-v3 .hero-title {
+    font-size: 4rem !important;
+    font-weight: 800 !important;
+    margin-bottom: 20px !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 50%, #e9ecef 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
 }
 
-.nofee-embed .brand-icon.etc {
-    background: linear-gradient(135deg, #6b46c1, #9333ea);
+.nofee-v3 .hero-subtitle {
+    font-size: 1.5rem !important;
+    font-weight: 300 !important;
+    opacity: 0.9 !important;
+    margin-bottom: 40px !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    visibility: visible !important;
+    display: block !important;
 }
 
-.nofee-embed .product-info h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: #333;
+/* 🎛️ 필터 카드 */
+.nofee-v3 .filter-card {
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-radius: 24px !important;
+    padding: 40px !important;
+    margin-bottom: 40px !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1) !important;
+    animation: slideInUp 0.8s ease-out 0.2s both !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
 }
 
-.nofee-embed .product-meta {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
+.nofee-v3 .filter-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+    gap: 20px !important;
+    margin-bottom: 30px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
-.nofee-embed .meta-tag {
-    padding: 2px 8px;
-    background: #f1f3f4;
-    border-radius: 4px;
-    font-size: 12px;
-    color: #666;
+.nofee-v3 .filter-group {
+    position: relative !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
 }
 
-.nofee-embed .price-breakdown {
-    margin-bottom: 16px;
+/* 🎨 시스템 기본 Select 스타일 */
+.nofee-v3 .filter-select {
+    width: 100% !important;
+    padding: 18px 24px !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 16px !important;
+    color: white !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    outline: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='white' d='M2 0L0 2h4zM2 5L0 3h4z'/></svg>") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 20px center !important;
+    background-size: 12px !important;
+    padding-right: 50px !important;
 }
 
-.nofee-embed .price-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 0;
-    font-size: 14px;
+.nofee-v3 .filter-select:hover {
+    background: rgba(255, 255, 255, 0.25) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
 }
 
-.nofee-embed .price-row:not(:last-child) {
-    border-bottom: 1px solid #f1f3f4;
+.nofee-v3 .filter-select:focus {
+    background: rgba(255, 255, 255, 0.3) !important;
+    border-color: rgba(255, 255, 255, 0.6) !important;
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1) !important;
 }
 
-.nofee-embed .price-total {
-    background: linear-gradient(135deg, #5c27fe, #7c3aed);
-    color: white;
-    padding: 12px;
-    border-radius: 8px;
-    text-align: center;
+.nofee-v3 .filter-select option {
+    background: #333 !important;
+    color: white !important;
+    padding: 12px !important;
+    font-weight: 500 !important;
 }
 
-.nofee-embed .price-label {
-    font-size: 12px;
-    opacity: 0.9;
-    margin-bottom: 4px;
+/* 🏷️ 활성 필터 태그 */
+.nofee-v3 .active-filters {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
-.nofee-embed .price-value {
-    font-size: 1.2rem;
-    font-weight: 700;
+.nofee-v3 .filter-tag {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 16px !important;
+    background: linear-gradient(135deg, #5c27fe, #7c3aed) !important;
+    color: white !important;
+    border-radius: 25px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 15px rgba(92, 39, 254, 0.3) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
-/* 더보기 버튼 */
-.nofee-embed .load-more {
-    text-align: center;
-    margin: 40px 0;
+.nofee-v3 .filter-remove {
+    cursor: pointer !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    opacity: 0.8 !important;
+    visibility: visible !important;
+    transition: opacity 0.2s ease !important;
 }
 
-.nofee-embed .load-more-btn {
-    padding: 12px 32px;
-    background: #5c27fe;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
+.nofee-v3 .filter-remove:hover {
+    opacity: 1 !important;
 }
 
-.nofee-embed .load-more-btn:hover {
-    background: #4a1fe0;
-    transform: translateY(-1px);
+/* 📊 상품 카운터 */
+.nofee-v3 .product-counter {
+    text-align: center !important;
+    margin-bottom: 40px !important;
+    animation: slideInUp 0.8s ease-out 0.4s both !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
 }
 
-.nofee-embed .load-more-btn:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-    transform: none;
+.nofee-v3 .counter-text {
+    font-size: 1.2rem !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: inline !important;
 }
 
-/* 로딩 상태 */
-.nofee-embed .loading {
-    text-align: center;
-    padding: 60px 20px;
+.nofee-v3 .counter-number {
+    font-size: 2rem !important;
+    font-weight: 800 !important;
+    color: #ffffff !important;
+    margin: 0 8px !important;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: inline !important;
 }
 
-.nofee-embed .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #5c27fe;
-    border-radius: 50%;
-    animation: nofeeSpinAnimation 1s linear infinite;
-    margin: 0 auto 20px;
+/* 🎴 상품 그리드 */
+.nofee-v3 .products-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)) !important;
+    gap: 30px !important;
+    margin-bottom: 60px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
-@keyframes nofeeSpinAnimation {
+.nofee-v3 .product-card {
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-radius: 24px !important;
+    padding: 32px !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    cursor: pointer !important;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    animation: slideInUp 0.6s ease-out both !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+    position: relative !important;
+    overflow: hidden !important;
+    user-select: none !important;
+}
+
+.nofee-v3 .product-card::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%) !important;
+    opacity: 0 !important;
+    transition: opacity 0.3s ease !important;
+    z-index: 1 !important;
+}
+
+.nofee-v3 .product-card:hover {
+    transform: translateY(-8px) !important;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.nofee-v3 .product-card:hover::before {
+    opacity: 1 !important;
+}
+
+.nofee-v3 .product-card:active {
+    transform: translateY(-6px) scale(0.98) !important;
+}
+
+.nofee-v3 .product-header {
+    display: flex !important;
+    align-items: center !important;
+    gap: 20px !important;
+    margin-bottom: 24px !important;
+    position: relative !important;
+    z-index: 2 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.nofee-v3 .brand-icon {
+    width: 60px !important;
+    height: 60px !important;
+    border-radius: 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-weight: 800 !important;
+    font-size: 24px !important;
+    color: white !important;
+    flex-shrink: 0 !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.nofee-v3 .brand-icon.samsung {
+    background: linear-gradient(135deg, #1f4e8c, #2b6cb0) !important;
+}
+
+.nofee-v3 .brand-icon.apple {
+    background: linear-gradient(135deg, #333, #666) !important;
+}
+
+.nofee-v3 .brand-icon.etc {
+    background: linear-gradient(135deg, #6b46c1, #9333ea) !important;
+}
+
+.nofee-v3 .product-info {
+    flex: 1 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.nofee-v3 .product-title {
+    font-size: 1.4rem !important;
+    font-weight: 700 !important;
+    color: white !important;
+    margin-bottom: 12px !important;
+    line-height: 1.3 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+}
+
+.nofee-v3 .product-meta {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.nofee-v3 .meta-tag {
+    padding: 6px 12px !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    border-radius: 20px !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: inline-block !important;
+}
+
+/* 💰 가격 섹션 */
+.nofee-v3 .price-section {
+    position: relative !important;
+    z-index: 2 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.nofee-v3 .price-breakdown {
+    margin-bottom: 20px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.nofee-v3 .price-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 12px 0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 500 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.nofee-v3 .price-row:last-child {
+    border-bottom: none !important;
+}
+
+.nofee-v3 .price-total {
+    background: linear-gradient(135deg, #5c27fe, #7c3aed) !important;
+    border-radius: 16px !important;
+    padding: 20px !important;
+    text-align: center !important;
+    box-shadow: 0 8px 30px rgba(92, 39, 254, 0.3) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+}
+
+.nofee-v3 .price-label {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+    margin-bottom: 8px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+}
+
+.nofee-v3 .price-value {
+    font-size: 2rem !important;
+    font-weight: 800 !important;
+    color: white !important;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+}
+
+/* ⚡ 로딩 상태 */
+.nofee-v3 .loading-state {
+    text-align: center !important;
+    padding: 80px 20px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
+}
+
+.nofee-v3 .loading-spinner {
+    width: 60px !important;
+    height: 60px !important;
+    border: 4px solid rgba(255, 255, 255, 0.2) !important;
+    border-top: 4px solid white !important;
+    border-radius: 50% !important;
+    animation: spin 1s linear infinite !important;
+    margin: 0 auto 30px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+@keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
 
-/* 결과 없음 */
-.nofee-embed .no-results {
-    text-align: center;
-    padding: 60px 20px;
-    color: #666;
+.nofee-v3 .loading-text {
+    font-size: 1.2rem !important;
+    font-weight: 600 !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
 }
 
-.nofee-embed .no-results-icon {
-    font-size: 3rem;
-    margin-bottom: 20px;
+/* 🚫 에러 상태 */
+.nofee-v3 .error-state {
+    text-align: center !important;
+    padding: 80px 20px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
 }
 
-.nofee-embed .no-results h3 {
-    font-size: 1.5rem;
-    margin-bottom: 10px;
-    color: #333;
+.nofee-v3 .error-icon {
+    font-size: 4rem !important;
+    margin-bottom: 20px !important;
+    opacity: 0.8 !important;
+    visibility: visible !important;
 }
 
-/* 디버그 패널 */
-.nofee-debug-panel {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.9);
-    color: #00ff88;
-    padding: 15px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-family: monospace;
-    max-width: 400px;
-    max-height: 300px;
-    overflow-y: auto;
-    z-index: 9999;
-    border: 1px solid #00ff88;
+.nofee-v3 .error-title {
+    font-size: 1.8rem !important;
+    font-weight: 700 !important;
+    color: white !important;
+    margin-bottom: 16px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
 }
 
-.nofee-debug-panel h4 {
-    margin: 0 0 10px 0;
-    color: #00ff88;
+.nofee-v3 .error-message {
+    font-size: 1.1rem !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+    margin-bottom: 30px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: block !important;
 }
 
-.nofee-debug-status {
-    margin: 5px 0;
+.nofee-v3 .retry-button {
+    padding: 16px 32px !important;
+    background: linear-gradient(135deg, #5c27fe, #7c3aed) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 8px 25px rgba(92, 39, 254, 0.3) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
-.nofee-debug-success {
-    color: #00ff88;
+.nofee-v3 .retry-button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 12px 35px rgba(92, 39, 254, 0.4) !important;
 }
 
-.nofee-debug-error {
-    color: #ff4444;
-}
-
-.nofee-debug-info {
-    color: #66aaff;
-}
-
-/* 반응형 */
+/* 📱 반응형 디자인 */
 @media (max-width: 768px) {
-    .nofee-embed {
-        padding: 16px;
+    .nofee-v3 .main-container {
+        padding: 20px 16px !important;
     }
     
-    .nofee-embed .page-title {
-        font-size: 2rem;
+    .nofee-v3 .hero-title {
+        font-size: 2.5rem !important;
     }
     
-    .nofee-embed .filter-row {
-        flex-direction: column;
-        align-items: stretch;
+    .nofee-v3 .hero-subtitle {
+        font-size: 1.2rem !important;
     }
     
-    .nofee-embed .filter-button {
-        justify-content: center;
+    .nofee-v3 .filter-grid {
+        grid-template-columns: 1fr !important;
     }
     
-    .nofee-embed .product-list {
-        grid-template-columns: 1fr;
+    .nofee-v3 .products-grid {
+        grid-template-columns: 1fr !important;
+        gap: 20px !important;
+    }
+    
+    .nofee-v3 .filter-card,
+    .nofee-v3 .product-card {
+        padding: 24px !important;
     }
 }
 </style>
 
-<!-- 🎯 HTML 구조 -->
-<div class="nofee-embed">
-    <div class="container">
-        <!-- 페이지 헤더 -->
-        <div class="page-header">
-            <h1 class="page-title">노피 상품 검색</h1>
-            <p class="page-subtitle">원하는 조건으로 최적의 휴대폰 요금제를 찾아보세요</p>
+<!-- 🎯 메인 HTML 구조 -->
+<div class="nofee-v3">
+    <div class="main-container">
+        <!-- 🎯 히어로 섹션 -->
+        <div class="hero-section">
+            <h1 class="hero-title">노피 상품 검색</h1>
+            <p class="hero-subtitle">원하는 조건으로 최적의 휴대폰 요금제를 찾아보세요</p>
         </div>
         
-        <!-- 필터 영역 -->
-        <div class="filters">
-            <!-- 필터 버튼들 -->
-            <div class="filter-row">
+        <!-- 🎛️ 필터 카드 - 시스템 기본 Select 사용 -->
+        <div class="filter-card">
+            <div class="filter-grid">
                 <!-- 통신사 필터 -->
-                <div class="filter-button" data-category="carrier">
-                    <span class="filter-text">통신사</span>
-                    <span>▼</span>
+                <div class="filter-group">
+                    <select class="filter-select" id="carrierFilter" data-category="carrier">
+                        <option value="">통신사 선택</option>
+                        <option value="SKT">SK텔레콤</option>
+                        <option value="KT">KT</option>
+                        <option value="LGU">LG유플러스</option>
+                    </select>
                 </div>
                 
                 <!-- 제조사 필터 -->
-                <div class="filter-button" data-category="brand">
-                    <span class="filter-text">제조사</span>
-                    <span>▼</span>
+                <div class="filter-group">
+                    <select class="filter-select" id="brandFilter" data-category="brand">
+                        <option value="">제조사 선택</option>
+                        <option value="삼성">삼성</option>
+                        <option value="애플">애플</option>
+                    </select>
                 </div>
                 
                 <!-- 가입유형 필터 -->
-                <div class="filter-button" data-category="type">
-                    <span class="filter-text">가입유형</span>
-                    <span>▼</span>
+                <div class="filter-group">
+                    <select class="filter-select" id="typeFilter" data-category="type">
+                        <option value="">가입유형 선택</option>
+                        <option value="번호이동">번호이동</option>
+                        <option value="기기변경">기기변경</option>
+                        <option value="신규가입">신규가입</option>
+                    </select>
                 </div>
                 
                 <!-- 개통옵션 필터 -->
-                <div class="filter-button" data-category="support">
-                    <span class="filter-text">개통옵션</span>
-                    <span>▼</span>
+                <div class="filter-group">
+                    <select class="filter-select" id="supportFilter" data-category="support">
+                        <option value="">개통옵션 선택</option>
+                        <option value="공시지원">공시지원</option>
+                        <option value="선택약정">선택약정</option>
+                    </select>
                 </div>
                 
                 <!-- 정렬 필터 -->
-                <div class="filter-button" data-category="sort">
-                    <span class="filter-text">정렬</span>
-                    <span>▼</span>
+                <div class="filter-group">
+                    <select class="filter-select" id="sortFilter" data-category="sort">
+                        <option value="">정렬 선택</option>
+                        <option value="asc">월납부금 낮은순</option>
+                        <option value="desc">월납부금 높은순</option>
+                        <option value="discount">할인율 높은순</option>
+                    </select>
                 </div>
             </div>
             
-            <!-- 활성 필터 표시 -->
+            <!-- 활성 필터 -->
             <div class="active-filters" id="activeFilters"></div>
         </div>
         
-        <!-- 드롭다운 메뉴들 -->
-        <div class="dropdown-menu" data-target="carrier">
-            <button data-carrier="">전체</button>
-            <button data-carrier="SKT">SK텔레콤</button>
-            <button data-carrier="KT">KT</button>
-            <button data-carrier="LGU">LG유플러스</button>
+        <!-- 📊 상품 카운터 -->
+        <div class="product-counter">
+            <span class="counter-text">총</span>
+            <span class="counter-number" id="productCount">0</span>
+            <span class="counter-text">개 상품</span>
         </div>
         
-        <div class="dropdown-menu" data-target="brand">
-            <button data-brand="">전체</button>
-            <button data-brand="삼성">삼성</button>
-            <button data-brand="애플">애플</button>
-        </div>
-        
-        <div class="dropdown-menu" data-target="type">
-            <button data-type="">전체</button>
-            <button data-type="번호이동">번호이동</button>
-            <button data-type="기기변경">기기변경</button>
-            <button data-type="신규가입">신규가입</button>
-        </div>
-        
-        <div class="dropdown-menu" data-target="support">
-            <button data-support="">전체</button>
-            <button data-support="공시지원">공시지원</button>
-            <button data-support="선택약정">선택약정</button>
-        </div>
-        
-        <div class="dropdown-menu" data-target="sort">
-            <button data-sort="">기본순</button>
-            <button data-sort="asc">월납부금 낮은순</button>
-            <button data-sort="desc">월납부금 높은순</button>
-            <button data-sort="discount">할인율 높은순</button>
-        </div>
-        
-        <!-- 상품 개수 -->
-        <div class="product-count">
-            총 <strong id="productCount">0</strong>개 상품
-        </div>
-        
-        <!-- 상품 리스트 -->
-        <div class="product-list" id="productList">
-            <div class="loading">
-                <div class="spinner"></div>
-                <p>상품 데이터를 불러오는 중...</p>
+        <!-- 🎴 상품 그리드 -->
+        <div class="products-grid" id="productList">
+            <!-- 초기 로딩 상태 -->
+            <div class="loading-state" style="grid-column: 1 / -1;">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">상품 데이터를 불러오는 중...</div>
             </div>
         </div>
         
         <!-- 더보기 버튼 -->
-        <div class="load-more" id="loadMore" style="display: none;">
-            <button class="load-more-btn" id="loadMoreBtn">
-                <span id="loadMoreText">상품 더 보기</span>
+        <div style="text-align: center; margin-top: 40px;" id="loadMore">
+            <button class="retry-button" id="loadMoreBtn" style="display: none;">
+                상품 더 보기
             </button>
         </div>
     </div>
 </div>
 
-<!-- 디버그 패널 -->
-<div class="nofee-debug-panel" id="debugPanel">
-    <h4>🔍 데이터 로드 상태</h4>
-    <div id="debugStatus"></div>
-</div>
-
-<!-- 🚀 JavaScript 로드 -->
+<!-- 🚀 기본 JavaScript - Select 이벤트 + 안정적인 상품 클릭 -->
 <script>
-// 🔧 디버그 시스템
-function updateDebugPanel(message, type = 'info') {
-    const debugStatus = document.getElementById('debugStatus');
-    if (!debugStatus) return;
+(function() {
+    'use strict';
     
-    const div = document.createElement('div');
-    div.className = 'nofee-debug-status nofee-debug-' + type;
-    div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-    debugStatus.appendChild(div);
+    console.log('🚀 노피 v3.2 - HTML+CSS 통합 버전 시작');
     
-    while (debugStatus.children.length > 15) {
-        debugStatus.removeChild(debugStatus.firstChild);
+    // 🎯 Select 이벤트 리스너 등록
+    function initSelectFilters() {
+        const filterSelects = document.querySelectorAll('.nofee-v3 .filter-select');
+        
+        filterSelects.forEach(select => {
+            select.addEventListener('change', function() {
+                const category = this.dataset.category;
+                const value = this.value;
+                
+                console.log(`🔍 필터 선택: ${category} = ${value || '전체'}`);
+                
+                // 외부 필터 함수 호출 (GitHub JS에서 제공)
+                if (window.applyFilter) {
+                    window.applyFilter(category, value);
+                } else {
+                    console.log('⏳ applyFilter 함수 대기 중...');
+                }
+            });
+        });
+        
+        console.log('🎮 Select 필터 이벤트 리스너 설정 완료');
     }
     
-    debugStatus.scrollTop = debugStatus.scrollHeight;
-}
-
-// 콘솔 로그 캡처
-const originalLog = console.log;
-const originalError = console.error;
-
-console.log = function(...args) {
-    originalLog.apply(console, args);
-    const message = args.join(' ');
-    updateDebugPanel(message, message.includes('✅') ? 'success' : 'info');
-};
-
-console.error = function(...args) {
-    originalError.apply(console, args);
-    updateDebugPanel(args.join(' '), 'error');
-};
-
-updateDebugPanel('웹플로우 임베드 최종 버전 로드', 'success');
-
-// 🔄 JavaScript 로드 (성공 확인된 URL들)
-(function loadNoFeeScript() {
-    updateDebugPanel('JavaScript 로드 시작...', 'info');
+    // 📱 상품 클릭 이벤트 위임 (안정적인 버전)
+    function initProductClickHandler() {
+        document.addEventListener('click', function(e) {
+            const productCard = e.target.closest('.product-card');
+            if (!productCard) return;
+            
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('📱 상품 카드 클릭 감지');
+            
+            // 상품 데이터 추출 (data 속성에서)
+            try {
+                const productData = extractProductDataFromCard(productCard);
+                
+                if (productData && productData.model) {
+                    console.log('📦 추출된 상품 데이터:', productData);
+                    goToAIPage(productData);
+                } else {
+                    console.error('❌ 상품 데이터 추출 실패 - DOM에서 직접 추출 시도');
+                    // DOM에서 직접 추출 시도
+                    const fallbackData = extractProductDataFromDOM(productCard);
+                    if (fallbackData && fallbackData.model) {
+                        console.log('🔄 DOM에서 직접 추출 성공:', fallbackData);
+                        goToAIPage(fallbackData);
+                    } else {
+                        console.error('💥 모든 데이터 추출 방법 실패');
+                    }
+                }
+            } catch (error) {
+                console.error('❌ 상품 클릭 처리 오류:', error);
+            }
+        });
+        
+        console.log('📱 상품 클릭 이벤트 리스너 설정 완료');
+    }
     
-    const scriptUrls = [
-        'https://jacob-po.github.io/nofee-webflow/pages/more.js?v=' + Date.now(),
-        'https://raw.githubusercontent.com/jacob-po/nofee-webflow/main/pages/more.js?v=' + Date.now()
-    ];
-    
-    let currentIndex = 0;
-    
-    function tryLoadScript() {
-        if (currentIndex >= scriptUrls.length) {
-            updateDebugPanel('모든 URL 실패 - 폴백 실행', 'error');
-            showFallbackMessage();
-            return;
+    // 🎯 상품 데이터 추출 (data 속성에서)
+    function extractProductDataFromCard(productCard) {
+        try {
+            const data = {};
+            
+            // data 속성에서 추출
+            const dataset = productCard.dataset;
+            if (dataset && Object.keys(dataset).length > 0) {
+                Object.keys(dataset).forEach(key => {
+                    data[key] = decodeURIComponent(dataset[key] || '');
+                });
+                
+                console.log('✅ data 속성에서 추출:', data);
+                return data;
+            }
+            
+            return null;
+            
+        } catch (error) {
+            console.error('data 속성 추출 오류:', error);
+            return null;
         }
-        
+    }
+    
+    // 🎯 상품 데이터 추출 (DOM에서 직접)
+    function extractProductDataFromDOM(productCard) {
+        try {
+            const data = {
+                model: '',
+                carrier: '',
+                brand: '',
+                type: '',
+                support: '',
+                total: '',
+                plan: '',
+                installment: '',
+                originPrice: '',
+                principal: '',
+                discount: '',
+                discountRate: ''
+            };
+            
+            // 모델명 추출
+            const titleElement = productCard.querySelector('.product-title');
+            if (titleElement) {
+                data.model = titleElement.textContent.trim();
+            }
+            
+            // 메타 태그에서 정보 추출
+            const metaTags = productCard.querySelectorAll('.meta-tag');
+            if (metaTags.length >= 4) {
+                data.carrier = metaTags[0].textContent.trim();
+                data.brand = metaTags[1].textContent.trim();
+                data.type = metaTags[2].textContent.trim();
+                data.support = metaTags[3].textContent.trim();
+            }
+            
+            // 월 납부금 추출
+            const priceValueElement = productCard.querySelector('.price-value');
+            if (priceValueElement) {
+                data.total = priceValueElement.textContent.replace(/[^\d]/g, '');
+            }
+            
+            // 가격 상세 정보 추출
+            const priceRows = productCard.querySelectorAll('.price-row');
+            priceRows.forEach(row => {
+                const cells = row.children;
+                if (cells.length >= 2) {
+                    const label = cells[0].textContent.trim();
+                    const value = cells[1].textContent.trim();
+                    const numValue = value.replace(/[^\d]/g, '');
+                    
+                    if (label.includes('기기값')) {
+                        data.originPrice = numValue;
+                    } else if (label.includes('할부원금')) {
+                        data.installment = numValue;
+                    } else if (label.includes('요금제')) {
+                        data.plan = numValue;
+                    } else if (label.includes('지원금')) {
+                        data.principal = numValue;
+                        // 할인율 추출 (괄호 안의 퍼센트)
+                        const discountMatch = value.match(/\((\d+)%\)/);
+                        if (discountMatch) {
+                            data.discountRate = discountMatch[1];
+                        }
+                        data.discount = numValue;
+                    }
+                }
+            });
+            
+            console.log('✅ DOM에서 직접 추출:', data);
+            return data;
+            
+        } catch (error) {
+            console.error('DOM 직접 추출 오류:', error);
+            return null;
+        }
+    }
+    
+    // 🤖 AI 페이지로 이동 함수
+    function goToAIPage(productData) {
+        try {
+            // URL 파라미터 생성 (모든 데이터 포함)
+            const params = new URLSearchParams();
+            
+            // 모든 필드를 URL 파라미터로 추가
+            Object.entries(productData).forEach(([key, value]) => {
+                if (value && value !== '') {
+                    params.append(key, value);
+                }
+            });
+            
+            // 추가 메타데이터
+            if (!params.has('from')) {
+                params.append('from', 'search');
+            }
+            if (!params.has('timestamp')) {
+                params.append('timestamp', Date.now().toString());
+            }
+            
+            // localStorage에도 백업 저장
+            try {
+                localStorage.setItem('selectedProduct', JSON.stringify(productData));
+                localStorage.setItem('selectedProductTime', Date.now().toString());
+                console.log('💾 localStorage에 상품 데이터 저장 완료');
+            } catch (storageError) {
+                console.warn('⚠️ localStorage 저장 실패:', storageError);
+            }
+            
+            // AI 페이지 URL 생성
+            const aiUrl = `/ai?${params.toString()}`;
+            
+            console.log('🤖 AI 페이지로 이동:', aiUrl);
+            console.log('📋 URL 파라미터 개수:', Array.from(params.keys()).length);
+            console.log('📋 전체 파라미터:', Object.fromEntries(params));
+            
+            // 페이지 이동
+            window.location.href = aiUrl;
+            
+        } catch (error) {
+            console.error('❌ AI 페이지 이동 중 오류:', error);
+            
+            // 오류 시 기본 AI 페이지로 이동 (최소한의 파라미터)
+            const fallbackUrl = `/ai?model=${encodeURIComponent(productData.model || '상품정보없음')}&from=search_error`;
+            console.log('🔄 폴백 URL로 이동:', fallbackUrl);
+            window.location.href = fallbackUrl;
+        }
+    }
+    
+    // 🎯 외부 GitHub 스크립트 로드
+    function loadExternalScript() {
         const script = document.createElement('script');
-        const url = scriptUrls[currentIndex];
-        
-        updateDebugPanel(`시도 ${currentIndex + 1}: ${url.split('/').pop()}`, 'info');
+        script.src = 'https://jacob-po.github.io/nofee-webflow/pages/more.js?v=' + Date.now();
         
         script.onload = function() {
-            updateDebugPanel(`✅ JavaScript 로드 성공!`, 'success');
+            console.log('✅ GitHub 스크립트 로드 성공');
             
             setTimeout(() => {
                 if (window.initProductSearch) {
-                    updateDebugPanel('상품 검색 초기화 실행...', 'info');
+                    console.log('🚀 상품 검색 초기화 시작');
                     window.initProductSearch();
                 } else {
-                    updateDebugPanel('초기화 함수 대기 중...', 'info');
+                    console.log('⏳ 초기화 함수 대기 중...');
                     setTimeout(() => {
                         if (window.initProductSearch) {
                             window.initProductSearch();
                         } else {
-                            showFallbackMessage();
+                            showError();
                         }
-                    }, 2000);
+                    }, 3000);
                 }
             }, 500);
         };
         
         script.onerror = function() {
-            updateDebugPanel(`❌ 로드 실패: ${currentIndex + 1}번째`, 'error');
-            currentIndex++;
-            setTimeout(tryLoadScript, 1000);
+            console.error('❌ GitHub 스크립트 로드 실패');
+            showError();
         };
         
-        script.src = url;
         document.head.appendChild(script);
+        console.log('📡 GitHub 스크립트 로드 시작...');
     }
     
-    tryLoadScript();
-})();
-
-// 📱 폴백 메시지
-function showFallbackMessage() {
-    const productList = document.getElementById('productList');
-    if (!productList) return;
+    // 🚫 에러 표시
+    function showError() {
+        const productList = document.getElementById('productList');
+        if (!productList) return;
+        
+        productList.innerHTML = `
+            <div class="error-state" style="grid-column: 1 / -1;">
+                <div class="error-icon">⚠️</div>
+                <h3 class="error-title">데이터 로드 실패</h3>
+                <p class="error-message">네트워크 연결을 확인하고 새로고침해주세요</p>
+                <button class="retry-button" onclick="location.reload()">새로고침</button>
+            </div>
+        `;
+        
+        console.log('🚫 에러 상태 표시');
+    }
     
-    productList.innerHTML = `
-        <div class="no-results">
-            <div class="no-results-icon">🔄</div>
-            <h3>페이지를 새로고침해주세요</h3>
-            <p>데이터 로딩 중 문제가 발생했습니다</p>
-            <button onclick="location.reload()" style="
-                margin-top: 20px; 
-                padding: 12px 24px; 
-                background: #5c27fe; 
-                color: white; 
-                border: none; 
-                border-radius: 8px; 
-                cursor: pointer;
-                font-weight: 600;
-                transition: all 0.2s;
-            " onmouseover="this.style.background='#4a1fe0'" onmouseout="this.style.background='#5c27fe'">
-                새로고침
-            </button>
-        </div>
-    `;
-    
-    updateDebugPanel('폴백 UI 표시 완료', 'success');
-}
-
-// 키보드 단축키 (Ctrl+D)
-document.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.key === 'd') {
-        e.preventDefault();
-        const panel = document.getElementById('debugPanel');
-        if (panel) {
-            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    // 🚀 초기화
+    function init() {
+        console.log('🎯 기본 시스템 초기화 시작');
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                initSelectFilters();
+                initProductClickHandler();
+                loadExternalScript();
+            });
+        } else {
+            initSelectFilters();
+            initProductClickHandler();
+            loadExternalScript();
         }
+        
+        console.log('✨ 기본 UI 및 이벤트 설정 완료');
     }
-});
-
-// 10초 타임아웃
-setTimeout(() => {
-    const productList = document.getElementById('productList');
-    if (productList && productList.innerHTML.includes('spinner')) {
-        updateDebugPanel('타임아웃 - 폴백 실행', 'error');
-        showFallbackMessage();
-    }
-}, 10000);
-
-updateDebugPanel('모든 시스템 준비 완료', 'success');
+    
+    // 타임아웃 보호
+    setTimeout(() => {
+        const productList = document.getElementById('productList');
+        if (productList && productList.querySelector('.loading-state')) {
+            console.log('⏰ 15초 타임아웃 - 에러 표시');
+            showError();
+        }
+    }, 15000);
+    
+    // 즉시 초기화
+    init();
+    
+})();
 </script>
